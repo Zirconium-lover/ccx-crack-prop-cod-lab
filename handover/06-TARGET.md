@@ -53,9 +53,10 @@ and all of which should be met for the next:
 The ladder in `03-TEST-LADDER.md`: a law-level check in under a second, a 3-D
 specimen with real erosion in under a minute, a specimen that manufactures
 the pathological state in under half a minute, and the real deck as the last
-gate rather than the first. Eleven cases, 47 s on four cores, **proven able
-to go red** — and the proof is on record: reinjecting the dead-facet defect
-turns all eleven red and trips the `LOADPATH` self test.
+gate rather than the first. Nine cases, under a minute on four cores,
+**proven able to go red** three separate ways, each caught first by a self
+test: reinjecting the dead-facet defect, ignoring compression, and ignoring
+load direction.
 
 Two properties matter as much as the speed:
 

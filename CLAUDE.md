@@ -44,9 +44,10 @@ trustworthy.
 
     CCX_EXE=/path/to/ccx_2.23_pardiso test/regress/run.py -j 4
 
-Eleven cases, under a minute on four cores, exit status is the number of
-failures. It is proven able to go red — reinjecting the dead-facet defect
-turns all eleven red and trips the `LOADPATH` self test. Regenerate the
+Nine cases, under a minute on four cores, exit status is the number of
+failures. It is proven able to go red three separate ways, each caught first
+by a self test: reinjecting the dead-facet defect (9/9 red), ignoring
+compression (9/9), and ignoring load DIRECTION (3/3 on the wrapped cases). Regenerate the
 switch registry with `tools/mkswitches.py` if you add or remove a `getenv`;
 the gate's preflight fails if it is stale.
 
