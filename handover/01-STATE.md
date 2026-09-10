@@ -241,8 +241,27 @@ What survives from the episode, and it is worth more than the claim:
   them apart;
 - the second `s3rad` wall is still **real** (`connected=1` at `theta=0.24175`
   with the reaction at 2.1% of peak, not 0.05%);
-- `fast-plain`'s 442 increments are still phantom (reaction **0.80%** of peak
-  at the stop, `0 failed-but-shut` at every census).
+- `fast-plain`'s 442 increments are still phantom — and by a wider margin
+  than first reported: **0.04%** of peak at the stop, not 0.80%.
+
+**A correction that is really a lesson about the arbiter.** The 0.80% came
+from the deck's `.dat`, which prints `total force` only where `*NODE PRINT`
+fires — twice in the whole `fast-plain` run. The larger of those two points
+was taken as the peak. The census, which now records the reaction on every
+accepted increment, shows the true peak is **1281.5**, reached long before
+either printed point, so:
+
+| | peak used | reaction at the stop | ratio |
+|---|---|---|---|
+| from `.dat`, two points | 61.22 | 0.49 | 0.80% |
+| from the census, every increment | **1281.5** | 0.50 | **0.04%** |
+
+The arbiter itself needed an arbiter. Percentages quoted from `.dat` are
+lower bounds on the peak and therefore UPPER bounds on the ratio — which is
+the direction that flatters a phantom run. The `s3rad` figures in this file
+(0.035% at severance, 0.044% at the stop) come from a `.dat` with far more
+print points, so they are much closer, but they are still `.dat` numbers and
+have not been re-taken with the census.
 
 **The census fires exactly when it should, checked against the deck's own
 state output.** On `mixed.inp` — 120 bulk elements in two halves joined by two

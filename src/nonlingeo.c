@@ -9754,6 +9754,11 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
          after SFREE(fn) the sum was exactly zero, and at the output calls
          it was stale enough to give a negative dissipation increment. */
 
+      /* [LOADPATH] capture the grip reaction HERE, where fn is the array
+         results() has just filled - the same reason the dissipation sum
+         below is taken here.  The census prints it; it must not read fn. */
+      if(damage_lp_ready) loadpath_setreaction(&damage_lp,fn,mt);
+
       if(damage_diss_report==1){
         damage_diss_p=0.;
         for(i=0;i<*nboun;i++){

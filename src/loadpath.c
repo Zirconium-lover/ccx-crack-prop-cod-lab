@@ -63,6 +63,7 @@
    quoted by accident.                                                    */
 
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <stdlib.h>
 #include "CalculiX.h"
@@ -288,6 +289,51 @@ ITG loadpath_loadmode(const loadpath *lp,const double *co,const double *vold,
   return 0;
 }
 
+/* The grip reaction: the one quantity that can arbitrate this module.
+
+   Why it is here.  Three versions of this census - failure flag only, plus
+   compression, plus direction - were each INTERNALLY CONSISTENT, and only the
+   grip reaction told them apart: on s3rad the undirected version reported
+   connected=1 while the grip carried 0.044% of peak.  A judgement has to be
+   checkable against something it does not compute, and this is that thing.
+
+   WHERE it is taken matters and is not negotiable.  fn is valid only on the
+   main Newton path, where results() has just filled it; nonlingeo.c already
+   carries the scar - "after SFREE(fn) the sum was exactly zero, and at the
+   output calls it was stale".  So the value is CAPTURED there and merely
+   PRINTED by the census, which runs elsewhere.
+
+   The sum is over the driven grip, which is the set CalculiX itself reports
+   as "total force for set ..." - so the number can be checked against the
+   deck's own .dat output rather than against this code. */
+void loadpath_setreaction(loadpath *lp,const double *fn,ITG mt)
+{
+  ITG i,k,node; double r[3]={0.,0.,0.},n2=0.;
+  if((lp==NULL)||(!lp->armed)||(fn==NULL)||(lp->nodesb==NULL)) return;
+  for(i=0;i<lp->nb;i++){
+    node=lp->nodesb[i];
+    if(node<1) continue;
+    for(k=0;k<3;k++) r[k]+=fn[mt*(node-1)+k+1];
+  }
+  for(k=0;k<3;k++){lp->react[k]=r[k]; n2+=r[k]*r[k];}
+  lp->rnorm=sqrt(n2);
+  lp->rseen=1;
+  /* The PEAK is deliberately not taken here.  This runs on every Newton
+     iteration, and an early iteration's fn is not the specimen's reaction -
+     taking the peak here made the fast-plain census report its own peak
+     load as "4.78% of peak", because the maximum came from an unconverged
+     iterate 21x larger.  loadpath_census updates the peak instead, once per
+     CONVERGED increment, which is the only state this module judges in. */
+}
+
+/* Percent of the largest reaction this run has seen.  Below about a per cent
+   the specimen is bookkeeping, whatever the connectivity says. */
+double loadpath_reactpct(const loadpath *lp)
+{
+  if((lp==NULL)||(lp->rpeak<=0.)) return -1.;
+  return 100.*lp->rnorm/lp->rpeak;
+}
+
 ITG loadpath_facet_open(const double *stx,ITG mi0,ITG elem,ITG nip)
 {
   ITG j;
@@ -389,7 +435,21 @@ ITG loadpath_latch(loadpath *lp,ITG inc,double t)
    this point states its own status on the same screen. */
 void loadpath_note(loadpath *lp,ITG inc,double t)
 {
-  ITG what=loadpath_latch(lp,inc,t);
+  ITG what;
+
+  /* The peak reaction, taken ONCE per accepted increment.
+     Two wrong placements, both caught by the fast-plain deck reporting its
+     own peak load as "4.78% of peak":
+       - per Newton ITERATION: an early iterate's fn is not a reaction;
+       - per census call: the increment loop re-enters on every cutback, so
+         a rejected attempt's value was being taken as the peak.
+     Only a new increment number means a state that was actually accepted. */
+  if(lp->armed&&lp->rseen&&(inc!=lp->rinc)){
+    lp->rinc=inc;
+    if(lp->rnorm>lp->rpeak) lp->rpeak=lp->rnorm;
+  }
+
+  what=loadpath_latch(lp,inc,t);
 
   if(what==1){
     printf("\n[LOADPATH SEVERED] inc=%" ITGFORMAT " time=%.12e\n"
@@ -406,6 +466,13 @@ void loadpath_note(loadpath *lp,ITG inc,double t)
            "pieces, not a specimen\n\n",
            lp->sev_inc,lp->sev_time,lp->nconfirm,lp->origin,lp->nreach,
            lp->nlive,lp->nfacet,lp->nfacetdead);
+    if(lp->rseen){
+      double pc=loadpath_reactpct(lp);
+      printf("                   grip|R|=%.6e",lp->rnorm);
+      if(pc>=0.) printf(" = %.2f%% of the peak this run has seen",pc);
+      printf("\n");
+    }
+    printf("\n");
     fflush(stdout);
     return;
   }
@@ -420,9 +487,15 @@ void loadpath_note(loadpath *lp,ITG inc,double t)
     printf("[LOADPATH CENSUS] inc=%" ITGFORMAT " time=%.7f connected=%"
            ITGFORMAT " reach=%" ITGFORMAT " live=%" ITGFORMAT
            " facets=%" ITGFORMAT "/%" ITGFORMAT " open-failed, %"
-           ITGFORMAT " failed-but-shut\n",
+           ITGFORMAT " failed-but-shut",
            inc,t,lp->connected,lp->nreach,lp->nlive,
            lp->nfacetdead,lp->nfacet,lp->nfacetshut);
+    if(lp->rseen){
+      double pc=loadpath_reactpct(lp);
+      printf(" grip|R|=%.4e",lp->rnorm);
+      if(pc>=0.) printf(" (%.2f%% of peak)",pc);
+    }
+    printf("\n");
     fflush(stdout);
   }
 
@@ -449,6 +522,12 @@ void loadpath_note(loadpath *lp,ITG inc,double t)
            "connected=%" ITGFORMAT "\n",
            inc,t,lp->ninc_past,lp->sev_inc,lp->sev_time,
            lp->nfacetdead,lp->nfacetshut,lp->connected);
+    if(lp->rseen){
+      double pc=loadpath_reactpct(lp);
+      printf("                   grip|R|=%.4e",lp->rnorm);
+      if(pc>=0.) printf(" = %.2f%% of peak",pc);
+      printf("\n");
+    }
     fflush(stdout);
   }
 }
@@ -707,6 +786,41 @@ ITG loadpath_selftest(void)
     w=loadpath_latch(&lp,32,0.6);
     lp_chk("M confirmed at three",w,1,&nbad);
     lp_chk("M records the FIRST increment",lp.sev_inc,30,&nbad);
+    loadpath_free(&lp);
+  }
+
+  /* N: the grip reaction, the arbiter.  It must sum over the DRIVEN grip
+     only, keep the peak, and report a percentage against it. */
+  {
+    loadpath lp; ITG mt=4,i; double fn[24];
+    loadpath_init(&lp); lp.armed=1;
+    for(i=0;i<24;i++) fn[i]=0.;
+    NNEW(lp.nodesb,ITG,2); lp.nodesb[0]=2; lp.nodesb[1]=3; lp.nb=2;
+    NNEW(lp.nodesa,ITG,1); lp.nodesa[0]=1; lp.na=1;
+    fn[mt*0+1]=100.;                        /* node 1: the OTHER grip */
+    fn[mt*1+1]=3.; fn[mt*2+1]=4.;           /* nodes 2,3: driven */
+    loadpath_setreaction(&lp,fn,mt);
+    lp_chk("N sums the driven grip only",(lp.rnorm>6.999)&&(lp.rnorm<7.001),
+           1,&nbad);
+    lp_chk("N an iteration does NOT set the peak",(lp.rpeak==0.),1,&nbad);
+    lp.rpeak=lp.rnorm;                      /* what a converged census does */
+    lp_chk("N peak is recorded on convergence",
+           (lp.rpeak>6.999)&&(lp.rpeak<7.001),1,&nbad);
+    fn[mt*1+1]=0.3; fn[mt*2+1]=0.4;         /* the specimen unloads 10x */
+    loadpath_setreaction(&lp,fn,mt);
+    lp_chk("N peak does not follow it down",
+           (lp.rpeak>6.999)&&(lp.rpeak<7.001),1,&nbad);
+    {
+      double pc=loadpath_reactpct(&lp);
+      lp_chk("N reports 10 percent of peak",(pc>9.99)&&(pc<10.01),1,&nbad);
+    }
+    loadpath_free(&lp);
+  }
+  {
+    loadpath lp;
+    loadpath_init(&lp);
+    lp_chk("N no reaction seen yet reports -1",
+           (loadpath_reactpct(&lp)<0.),1,&nbad);
     loadpath_free(&lp);
   }
 

@@ -4969,6 +4969,9 @@ typedef struct{
   ITG nfacet,nfacetdead,nlive;
   ITG nfacetshut;   /* failed BUT in compression                         */
   ITG mode;         /* +1 grips separating, -1 closing, 0 unknown         */
+  double react[3];  /* reaction summed over the driven grip               */
+  double rnorm,rpeak;
+  ITG rseen,rinc;
   ITG sev_seen;     /* severance LATCHES: it does not un-happen          */
   ITG sev_inc;      /* the FIRST increment without a path, not the       */
   double sev_time;  /* increment the latch confirmed it                  */
@@ -4993,6 +4996,8 @@ ITG  loadpath_census(loadpath *lp,ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
                      ITG mt);
 ITG  loadpath_loadmode(const loadpath *lp,const double *co,const double *vold,
                        ITG mt);
+void loadpath_setreaction(loadpath *lp,const double *fn,ITG mt);
+double loadpath_reactpct(const loadpath *lp);
 ITG  loadpath_facet_open(const double *stx,ITG mi0,ITG elem,ITG nip);
 ITG  loadpath_latch(loadpath *lp,ITG inc,double t);
 void loadpath_note(loadpath *lp,ITG inc,double t);
