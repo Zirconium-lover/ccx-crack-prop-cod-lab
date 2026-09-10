@@ -96,6 +96,40 @@ count. Fix `OMP_NUM_THREADS` and `MKL_NUM_THREADS` on both arms of any A/B.
 5. Feature off must be bit-identical. Run `test/regress/run.py`.
 6. Only then spend `s3rad`.
 
+## In progress: an owner for "what counts as converged"
+
+`src/convstate.c` exists and **measures only**. It reports, at the peak
+residual of every iteration:
+
+    need_du = |R| / k        and    need_du / grip
+
+The grip travel comes from the driven node set `loadpath.c` owns, so the two
+modules cannot disagree about what a grip is. It decides nothing, on purpose:
+`03-TEST-LADDER.md` records that no deck reproduces the class this judgement
+is for, so changing the criterion now would change a judgement no gate case
+can be put against.
+
+Measured so far:
+
+| deck, at its wall | node | `need_du/grip` |
+|---|---|---|
+| `fast-wrapped`, increment 99 | 440 | **3.8e-03** |
+| the class this is for | — | **of order 1** |
+
+**The next measurement, and it is the one that matters:** `need_du/grip` at
+the second `s3rad` wall, on node 1246. The prediction is that it is of order
+one, and that is what would make the criterion dimensionally sound and free of
+any tuned threshold. It has NOT been taken — the `s3rad` runs in this session
+used a binary built before `convstate.c` existed, so their logs carry no
+`[CONVSTATE]` line. Taking it costs one run to `theta=0.2556` at TWO threads
+(at four the run stalls at increment 604 and never reaches the wall).
+
+Only after that number exists should the criterion itself change, and the
+change should go through `convstate.c` rather than through another norm-level
+mask like `CCX_DAMAGE_AUTOSPC_FORCE` - which answers the same question with a
+stiffness ratio, is a fiction by `02-DIAGNOSTICS.md` 4's own criterion at the
+stall, and is not robust across thread counts.
+
 ## Open
 
 - **The other three discontinuities** the audit lists: damage initiation
