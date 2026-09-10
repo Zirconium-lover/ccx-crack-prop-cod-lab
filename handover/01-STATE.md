@@ -89,6 +89,17 @@ fixes reproducibility across instruction sets, not across thread counts. Two
 runs identical for 482 attempts diverged at 483 on a 6-against-5 iteration
 count; twenty increments later they were on different walls.
 
+**The grips can be read off the deck.** `loadpath.c` derives them from the
+`*BOUNDARY` cards — the direction carrying the largest prescribed magnitude,
+driven nodes against nodes held at zero in that same direction. On the target
+deck that gives **181 reacting against 180 driven**, which is exactly
+`FACE_X0_NSET` (181) and `FACE_XL_NSET` (180), with `FIXPOINTA` and
+`FIXPOINTB` correctly excluded because they hold directions 2 and 3. Measured
+on `m12_s3rad_gc24_w.inp` itself, not inferred from the fast decks. So the
+judgement no longer depends on anybody having configured
+`CCX_FRACTURE_TERMINATION`; that switch is now an override, not the arming
+condition.
+
 **A specimen now says when it has stopped being one.** `src/loadpath.c` owns
 the judgement, asks it once per converged increment, derives the grips from
 the deck's own `*BOUNDARY` cards when nobody names them, and stops the run at
