@@ -127,6 +127,23 @@ failure of a specimen that had already come apart, and the regularised arm's
 exists, the two arms sever 7.4e-04 apart in `theta` — the same figure already
 on record as the largest shift in any deletion time.
 
+**The second `s3rad` wall is NOT past severance — the third one is.** The
+census now separates the two classes at full scale. Stock `run_s3rad.sh`
+configuration, 4 threads, PARDISO, HEAD binary: the run reaches the recorded
+second wall at `theta = 0.255023` against the recorded `0.2555742` (0.2%
+apart, which is what a different thread count buys), and at the last census
+before it — increment 550, `theta = 0.24175` — the specimen is **still one
+piece**: `connected=1`, 1711 of 5318 facets failed, 39148 elements live. The
+grip reaction there is 66.4 against a peak of 3112.8 at `theta=0.1575`, i.e.
+**2.1% of peak**.
+
+So the second wall is a real convergence failure of a real specimen, and
+deserved the work that went into it. The third wall is not, and did not. Only
+a census that runs every increment can tell them apart, and until now nothing
+did. (That run was stopped by hand once `*ERROR: increment size smaller than
+minimum` had appeared and the rescue ladder was spiralling at
+`dtime=1.5e-06`; it was a control, not a completion.)
+
 **Severance is not always a reason to stop.** `test/pathfollow/close.inp` is
 two blocks joined by two facets and nothing else; it drives them past `df` so
 `g -> gmin` and then closes them, because the compressive branch of a crack
