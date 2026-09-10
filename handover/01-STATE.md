@@ -180,8 +180,33 @@ reported load falls to 1.2% of peak at severance and climbs back to **6.5% of
 peak** by `theta=1`. The model did not merely keep going, it reported a
 recovering specimen.
 
-**~~The fast-wrapped wall is past severance.~~ WITHDRAWN — it was an artefact
-of a load-path judgement that ignored compression.** The claim was that the
+**Connectivity is DIRECTIONAL, and getting that wrong reproduces the original
+defect exactly.** A dead facet pressed shut carries **compression**; it cannot
+carry tension. Counting it as a load path regardless of the load the specimen
+is under was tried and is **refuted by the reaction**: on `s3rad`, two threads,
+the census reported `connected=1` while the grip carried
+
+| theta | reaction | % of peak |
+|---|---|---|
+| 0.1575 | 3112.8 | 100% |
+| 0.3412 | 1.09 | **0.035%** |
+| 0.5575 | 1.35 | **0.044%** |
+
+and the run walked to **increment 931, `theta = 0.5575`** — the recorded
+phantom numbers, reproduced by a *different* wrong judgement. Plausible, and
+false, which is the failure mode this module exists to prevent.
+
+The judgement now asks which way the grips are moving: their centroid
+separation against the undeformed mesh, so it works when the endpoints came
+from named sets (`idir = 0`, the target deck's case). A shut facet counts only
+while the grips are closing. On every tension deck this reproduces the
+flag-only judgement exactly; `close.inp` step 2 is the only place in the tree
+where it differs, and there it is required.
+
+**The fast-wrapped wall is past severance** (restored — see below).
+
+**~~The fast-wrapped wall is past severance.~~ ~~WITHDRAWN~~ — the withdrawal
+was itself wrong, and is retracted.** The claim was that the
 deck severs at increment 96 and walls three increments later, so its wall and
 the regularised arm's `theta=1` were phantom. Making the judgement
 state-dependent removes the severance entirely: **`fast-wrapped` never loses
@@ -202,11 +227,22 @@ failed-but-compressed facet carries it. That single facet is the whole
 difference between "the regulariser was validated against a phantom" and "it
 was validated against a specimen".
 
-The lesson is the one this branch keeps re-learning: **a wall called phantom
-on a judgement nobody had measured is not a finding.** Two of the three walls
-this work called phantom — this one and the second `s3rad` wall — turned out
-to be real once the judgement was correct. Only the fast-plain 442 increments
-survive, and that deck has `0 failed-but-shut` at every census.
+**Retraction of the retraction, kept in full because the sequence is the
+lesson.** The withdrawal above was made on a judgement that counted shut
+facets in a TENSION test. Once direction was added, `fast-wrapped` severs at
+96 again and its wall at 99 is three increments later, as originally stated.
+The reading that settled it was the grip reaction, which is the one quantity
+none of the three judgements produces itself.
+
+What survives from the episode, and it is worth more than the claim:
+
+- **a judgement must be checked against something it does not compute.** All
+  three versions of the census were self-consistent; only the reaction told
+  them apart;
+- the second `s3rad` wall is still **real** (`connected=1` at `theta=0.24175`
+  with the reaction at 2.1% of peak, not 0.05%);
+- `fast-plain`'s 442 increments are still phantom (reaction **0.80%** of peak
+  at the stop, `0 failed-but-shut` at every census).
 
 **The census fires exactly when it should, checked against the deck's own
 state output.** On `mixed.inp` — 120 bulk elements in two halves joined by two

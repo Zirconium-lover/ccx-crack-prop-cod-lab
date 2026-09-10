@@ -5548,7 +5548,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 
       if(damage_lp_ready&&(iinc>0)){
         loadpath_census(&damage_lp,ipkon,kon,lakon,ne,xstate,*nstate_,mi[0],
-                        stx);
+                        stx,co,vold,mt);
         loadpath_note(&damage_lp,iinc,theta**tper);
 
         /* Policy, applied by the consumer, not by the owner: once the

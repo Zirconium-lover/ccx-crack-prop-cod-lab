@@ -15,6 +15,7 @@
     "not physics - see handover/05-DEBT.md item 1.",
     "severed_inc/severed_theta pin the run's own [LOADPATH] verdict; severed_inc 0 means the specimen never lost its load path.",
     "shut_facets pins the state-dependent judgement: facets that are fully failed AND in compression, which still conduct.",
+    "Connectivity is DIRECTIONAL: a dead facet pressed shut carries compression, not tension, so it counts as a load path only while the grips are closing.  close-* is the only deck here under compression.",
     "required_lines: every run's log must contain these, so a report that silently stopped being emitted is caught."
   ],
   "cases": [
@@ -54,19 +55,19 @@
     },
     {
       "name": "fast-wrapped",
-      "what": "the eroding phase wrapped in facets: reaches a node with no bulk support and walls on the crack-face kink, WITHOUT ever losing its load path - one failed-but-compressed facet carries it",
+      "what": "the eroding phase wrapped in facets: reaches a node with no bulk support, severs at 96 and stops before the crack-face-kink wall at 99 - the wall is three increments past severance",
       "kind": "fast",
       "variant": "wrapped",
       "env": [],
       "expect": {
-        "rc": 201,
-        "last_inc": 99,
+        "rc": 0,
+        "last_inc": 98,
         "theta": "0.158766E+00",
         "deletions": 64,
         "masked_max": 1,
         "worst_ratio": 0.00044641,
-        "severed_inc": 0,
-        "severed_theta": null
+        "severed_inc": 96,
+        "severed_theta": "0.1587578"
       }
     },
     {
@@ -79,11 +80,11 @@
       ],
       "expect": {
         "rc": 0,
-        "last_inc": 515,
-        "theta": "0.100000E+01",
+        "last_inc": 96,
+        "theta": "0.163500E+00",
         "deletions": 64,
-        "severed_inc": 0,
-        "severed_theta": null
+        "severed_inc": 94,
+        "severed_theta": "0.1595000"
       },
       "same_deletion_set_as": "fast-wrapped"
     },
@@ -96,12 +97,12 @@
         "CCX_DAMAGE_AUTOSPC=0"
       ],
       "expect": {
-        "rc": 201,
-        "last_inc": 99,
+        "rc": 0,
+        "last_inc": 98,
         "theta": "0.158766E+00",
         "deletions": 64,
-        "severed_inc": 0,
-        "severed_theta": null
+        "severed_inc": 96,
+        "severed_theta": "0.1587578"
       }
     },
     {

@@ -241,6 +241,53 @@ ITG loadpath_arm(loadpath *lp,ITG nk,
 
    With stx unavailable the facet is reported open, which is the judgement
    this module made before it could read the traction at all. */
+/* Are the grips being pulled apart or pushed together?
+
+   Measured, not assumed, and it works when the endpoints came from named
+   sets (idir = 0, which is the target deck's case).  Compare the distance
+   between the two grip centroids now against the distance in the undeformed
+   mesh: growing is tension, shrinking is compression.
+
+   Why this is needed at all - the measurement that forced it.  A dead facet
+   pressed shut carries COMPRESSION; it cannot carry tension.  Counting it as
+   a load path in a tension test produced exactly the failure this whole
+   module exists to prevent: on s3rad the census reported connected=1 while
+   the grip carried 0.047% of peak - plausible, and false.  So the judgement
+   is directional, and this is the direction. */
+ITG loadpath_loadmode(const loadpath *lp,const double *co,const double *vold,
+                      ITG mt)
+{
+  ITG i,k,node,na=0,nb=0;
+  double a0[3]={0.,0.,0.},b0[3]={0.,0.,0.},a1[3]={0.,0.,0.},b1[3]={0.,0.,0.};
+  double d0=0.,d1=0.,t;
+  if((lp==NULL)||(co==NULL)||(vold==NULL)) return 0;
+  if((lp->nodesa==NULL)||(lp->nodesb==NULL)) return 0;
+  for(i=0;i<lp->na;i++){
+    node=lp->nodesa[i]; if(node<1) continue;
+    for(k=0;k<3;k++){
+      a0[k]+=co[3*(node-1)+k];
+      a1[k]+=co[3*(node-1)+k]+vold[mt*(node-1)+k+1];
+    }
+    na++;
+  }
+  for(i=0;i<lp->nb;i++){
+    node=lp->nodesb[i]; if(node<1) continue;
+    for(k=0;k<3;k++){
+      b0[k]+=co[3*(node-1)+k];
+      b1[k]+=co[3*(node-1)+k]+vold[mt*(node-1)+k+1];
+    }
+    nb++;
+  }
+  if((na<1)||(nb<1)) return 0;
+  for(k=0;k<3;k++){
+    t=b0[k]/nb-a0[k]/na; d0+=t*t;
+    t=b1[k]/nb-a1[k]/na; d1+=t*t;
+  }
+  if(d1>d0) return  1;
+  if(d1<d0) return -1;
+  return 0;
+}
+
 ITG loadpath_facet_open(const double *stx,ITG mi0,ITG elem,ITG nip)
 {
   ITG j;
@@ -254,11 +301,17 @@ ITG loadpath_facet_open(const double *stx,ITG mi0,ITG elem,ITG nip)
 
 ITG loadpath_census(loadpath *lp,ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
                     const double *xstate,ITG nstate,ITG mi0,
-                    const double *stx)
+                    const double *stx,const double *co,const double *vold,
+                    ITG mt)
 {
-  ITG i,*ifacdead=NULL,iconn=1,nreach=0;
+  ITG i,*ifacdead=NULL,iconn=1,nreach=0,shutcounts;
 
   if(!lp->armed) return 1;
+
+  /* A shut facet is a load path only where the load it carries is the load
+     the specimen is under.  In tension it is not one. */
+  lp->mode=loadpath_loadmode(lp,co,vold,mt);
+  shutcounts=(lp->mode<0)?1:0;
 
   NNEW(ifacdead,ITG,*ne);
   lp->nfacet=0; lp->nfacetdead=0; lp->nfacetshut=0; lp->nlive=0;
@@ -276,6 +329,7 @@ ITG loadpath_census(loadpath *lp,ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
         lp->nfacetdead++;
       }else{
         lp->nfacetshut++;
+        if(!shutcounts) ifacdead[i]=1;    /* shut, but the load is tensile */
       }
     }
   }
@@ -523,7 +577,8 @@ static ITG lp_chain(ITG middle_is_facet,ITG middle_deleted,ITG nfailed,
   NNEW(lp.nodesa,ITG,2); NNEW(lp.nodesb,ITG,2);
   lp.nodesa[0]=1;lp.nodesa[1]=2; lp.na=2;
   lp.nodesb[0]=7;lp.nodesb[1]=8; lp.nb=2;
-  iconn=loadpath_census(&lp,ipkon,kon,lakon,&ne,xstate,nstate,mi0,NULL);
+  iconn=loadpath_census(&lp,ipkon,kon,lakon,&ne,xstate,nstate,mi0,NULL,
+                        NULL,NULL,4);
   loadpath_free(&lp);
   *iconn_out=iconn;
   return iconn;
