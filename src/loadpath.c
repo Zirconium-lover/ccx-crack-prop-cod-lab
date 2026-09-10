@@ -405,8 +405,8 @@ static void lp_chk(const char *name,ITG got,ITG want,ITG *nbad)
 static ITG lp_chain(ITG middle_is_facet,ITG middle_deleted,ITG nfailed,
                     ITG *iconn_out)
 {
-  ITG ipkon[3],kon[16],ne=3,nk=10,nodesa[2],nodesb[2];
-  ITG iconn=1,nreach=0,ifacdead[3],i,nstate=5,mi0=3;
+  ITG ipkon[3],kon[16],ne=3,nk=10;
+  ITG iconn,i,nstate=5,mi0=3;
   double xstate[5*3*3];
   char lakon[24];
   loadpath lp;
@@ -414,7 +414,6 @@ static ITG lp_chain(ITG middle_is_facet,ITG middle_deleted,ITG nfailed,
   for(i=0;i<24;i++) lakon[i]=' ';
   for(i=0;i<16;i++) kon[i]=0;
   for(i=0;i<5*3*3;i++) xstate[i]=0.;
-  for(i=0;i<3;i++) ifacdead[i]=0;
 
   /* e0 */
   ipkon[0]=0; kon[0]=1;kon[1]=2;kon[2]=3;kon[3]=4;
@@ -435,17 +434,13 @@ static ITG lp_chain(ITG middle_is_facet,ITG middle_deleted,ITG nfailed,
   /* mark nfailed of the middle facet's three points as failed */
   for(i=0;i<nfailed;i++) xstate[3+nstate*(i+mi0*1)]=1.;
 
-  nodesa[0]=1;nodesa[1]=2; nodesb[0]=7;nodesb[1]=8;
-
   loadpath_init(&lp);
   lp.nk=nk; lp.imode=0; lp.armed=1;
   NNEW(lp.nodesa,ITG,2); NNEW(lp.nodesb,ITG,2);
   lp.nodesa[0]=1;lp.nodesa[1]=2; lp.na=2;
   lp.nodesb[0]=7;lp.nodesb[1]=8; lp.nb=2;
   iconn=loadpath_census(&lp,ipkon,kon,lakon,&ne,xstate,nstate,mi0);
-  nreach=lp.nreach;
   loadpath_free(&lp);
-  (void)nreach;(void)nodesa;(void)nodesb;(void)ifacdead;
   *iconn_out=iconn;
   return iconn;
 }
