@@ -129,6 +129,15 @@ solve, the diagnostics.
 
 ## 5. Reproducibility is only within a fixed thread count
 
+**This is no longer a theoretical worry about A/Bs — it has invalidated a
+headline result.** The recorded `CCX_DAMAGE_AUTOSPC_FORCE=1` gain, increment
+554 -> 930, was measured on **two** threads. At four, the same configuration
+stalls at increment 604, `theta=0.255032`, and never passes the second wall.
+Nothing in the tree stated the thread count next to the result, so it read as
+a property of the switch. Quote the thread count with every trajectory number
+or the number does not mean anything.
+
+
 `MKL_CBWR=COMPATIBLE` buys reproducibility across instruction sets, not
 across thread counts — a distinction that was being relied on silently. Two
 runs identical for 482 attempts diverged at 483 on a 6-against-5 iteration

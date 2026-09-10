@@ -17,6 +17,13 @@ same form: what was tried, and the measurement that killed it.
 | a stiffness-ratio threshold tuned until a node is included | 76 nodes below 1e-3, 166 below 1e-2, 381 below 1e-1. Tuning among them is the chain of thresholds this project exists to avoid |
 | the crack-face regulariser, **on `s3rad`** | moves the wall 28 increments, 0.10% of load factor — and the whole difference is inside the post-severance regime. It works on the fast deck and does nothing here |
 
+## About the load-path judgement
+
+| tried | measurement that rejected it |
+|---|---|
+| **H3: making the judgement state-dependent would make `CCX_FRACTURE_PAST_SEVERANCE` unnecessary on `close.inp`** | it does not. `close.inp` reaches `dback=1.0` with the normal traction still **positive** (`+1.008e-02` at `theta=0.84`, `+1.032e-02`, `+1.056e-02` on the next two), i.e. fully failed and OPEN, for at least three increments. The path really is gone there; the faces only meet in step 2, after the run would have stopped. The switch was **not** a workaround for a wrong judgement, and saying it was, was wrong |
+| a facet's failure flag alone as "not a load path" | **withdrawn.** `cohesive_uc6.f` gives `deltal(1)<0` the FULL `kn`, not `g*kn`: a dead facet in compression carries load, and that is how a real crack transmits compression. On `fast-wrapped` exactly one such facet is the difference between a severed and a connected specimen at increment 96 |
+
 ## About the model's structure
 
 | tried | measurement that rejected it |

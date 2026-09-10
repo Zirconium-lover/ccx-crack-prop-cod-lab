@@ -13,7 +13,8 @@
     "deletion sets are unchanged and every status line up to severance is",
     "byte-identical to the pre-change baseline.  What was dropped is phantom,",
     "not physics - see handover/05-DEBT.md item 1.",
-    "severed_inc/severed_theta pin the run's own [LOADPATH] verdict, which is the only check on a case that deliberately runs past severance.",
+    "severed_inc/severed_theta pin the run's own [LOADPATH] verdict; severed_inc 0 means the specimen never lost its load path.",
+    "shut_facets pins the state-dependent judgement: facets that are fully failed AND in compression, which still conduct.",
     "required_lines: every run's log must contain these, so a report that silently stopped being emitted is caught."
   ],
   "cases": [
@@ -25,8 +26,8 @@
       "env": [],
       "expect": {
         "rc": 0,
-        "last_inc": 65,
-        "theta": "0.117500E+00",
+        "last_inc": 67,
+        "theta": "0.121500E+00",
         "deletions": 90,
         "severed_inc": 65,
         "severed_theta": "0.1175000"
@@ -42,8 +43,8 @@
       ],
       "expect": {
         "rc": 0,
-        "last_inc": 65,
-        "theta": "0.117500E+00",
+        "last_inc": 67,
+        "theta": "0.121500E+00",
         "deletions": 90,
         "severed_inc": 65,
         "severed_theta": "0.1175000"
@@ -53,19 +54,19 @@
     },
     {
       "name": "fast-wrapped",
-      "what": "the eroding phase wrapped in facets: reaches a node with no bulk support, and comes apart at increment 96.  The kink wall this deck is famous for is at increment 99, theta=0.158766 - three increments and 0.005% of load factor PAST severance, which is why fast-wrapped-wall has to ask for it explicitly",
+      "what": "the eroding phase wrapped in facets: reaches a node with no bulk support and walls on the crack-face kink, WITHOUT ever losing its load path - one failed-but-compressed facet carries it",
       "kind": "fast",
       "variant": "wrapped",
       "env": [],
       "expect": {
-        "rc": 0,
-        "last_inc": 96,
-        "theta": "0.158758E+00",
+        "rc": 201,
+        "last_inc": 99,
+        "theta": "0.158766E+00",
         "deletions": 64,
         "masked_max": 1,
         "worst_ratio": 0.00044641,
-        "severed_inc": 96,
-        "severed_theta": "0.1587578"
+        "severed_inc": 0,
+        "severed_theta": null
       }
     },
     {
@@ -78,11 +79,11 @@
       ],
       "expect": {
         "rc": 0,
-        "last_inc": 94,
-        "theta": "0.159500E+00",
+        "last_inc": 515,
+        "theta": "0.100000E+01",
         "deletions": 64,
-        "severed_inc": 94,
-        "severed_theta": "0.1595000"
+        "severed_inc": 0,
+        "severed_theta": null
       },
       "same_deletion_set_as": "fast-wrapped"
     },
@@ -95,51 +96,13 @@
         "CCX_DAMAGE_AUTOSPC=0"
       ],
       "expect": {
-        "rc": 0,
-        "last_inc": 96,
-        "theta": "0.158758E+00",
-        "deletions": 64,
-        "severed_inc": 96,
-        "severed_theta": "0.1587578"
-      }
-    },
-    {
-      "name": "fast-wrapped-wall",
-      "what": "the crack-face kink wall itself, kept as a regression by asking to run past severance. rc=201 at increment 99, theta=0.158766, is the exact pre-change number - so the wall is unchanged, and now it is on record that it is a convergence failure of a specimen that came apart at increment 96",
-      "kind": "fast",
-      "variant": "wrapped",
-      "env": [
-        "CCX_FRACTURE_PAST_SEVERANCE=1"
-      ],
-      "expect": {
         "rc": 201,
         "last_inc": 99,
         "theta": "0.158766E+00",
         "deletions": 64,
-        "masked_max": 1,
-        "worst_ratio": 0.00044641,
-        "severed_inc": 96,
-        "severed_theta": "0.1587578"
+        "severed_inc": 0,
+        "severed_theta": null
       }
-    },
-    {
-      "name": "fast-wrapped-wall-smooth",
-      "what": "the same, with the kink regularised: the wall is gone and the fracture is not, the pre-change result (increment 515, theta=1) reproduced exactly.  Both arms are past severance from increment 96 and 94 respectively, so this pair measures the regulariser, not the specimen",
-      "kind": "fast",
-      "variant": "wrapped",
-      "env": [
-        "CCX_FRACTURE_PAST_SEVERANCE=1",
-        "CCX_UC6_CONTACT_SMOOTH=1.e-2"
-      ],
-      "expect": {
-        "rc": 0,
-        "last_inc": 515,
-        "theta": "0.100000E+01",
-        "deletions": 64,
-        "severed_inc": 94,
-        "severed_theta": "0.1595000"
-      },
-      "same_deletion_set_as": "fast-wrapped-wall"
     },
     {
       "name": "mixed-analytic",
@@ -153,11 +116,13 @@
       ],
       "expect": {
         "rc": 0,
-        "check_mixed": "PASSED",
-        "accepted": 2499,
-        "postpeak": 2400,
+        "last_inc": 2502,
+        "theta": "0.500400E+00",
         "severed_inc": 2500,
-        "severed_theta": "0.5000000"
+        "severed_theta": "0.5000000",
+        "check_mixed": "PASSED",
+        "accepted": 2501,
+        "postpeak": 2400
       }
     },
     {
@@ -173,15 +138,19 @@
       ],
       "expect": {
         "rc": 0,
-        "check_mixed": "PASSED",
+        "last_inc": 2502,
+        "theta": "0.500400E+00",
         "severed_inc": 2500,
-        "severed_theta": "0.5000000"
+        "severed_theta": "0.5000000",
+        "check_mixed": "PASSED",
+        "accepted": 2501,
+        "postpeak": 2400
       },
       "identical_sta_as": "mixed-analytic"
     },
     {
       "name": "close-sharp",
-      "what": "the UC6 normal law itself, verified point by point on a facet damaged to gmin and then closed: this is where the five-orders tangent jump is measured rather than argued.  It is two blocks joined by two facets and nothing else, so it is severed in tension by design at increment 42 and needs CCX_FRACTURE_PAST_SEVERANCE to reach the compressive step that is the point of the test",
+      "what": "the UC6 normal law on a facet damaged to gmin and then CLOSED.  It is also the only deck that measures the state-dependent load-path judgement: the same two dead facets read as no load path while open and as a load path once compressed",
       "kind": "close",
       "zeta": "0",
       "env": [
@@ -189,11 +158,14 @@
       ],
       "expect": {
         "rc": 0,
-        "check_close": "PASSED",
-        "law_error": 2e-05,
-        "tangent_ratio": 1000000.0,
+        "last_inc": 200,
+        "theta": "0.200000E+01",
         "severed_inc": 42,
-        "severed_theta": "0.8400000"
+        "severed_theta": "0.8400000",
+        "check_close": "PASSED",
+        "tangent_ratio": 1000000.0,
+        "law_error": 2e-05,
+        "shut_facets": 2
       }
     },
     {
@@ -207,12 +179,15 @@
       ],
       "expect": {
         "rc": 0,
+        "last_inc": 200,
+        "theta": "0.200000E+01",
+        "severed_inc": 42,
+        "severed_theta": "0.8400000",
         "check_close": "PASSED",
-        "law_error": 2e-05,
         "tangent_ratio": 1000000.0,
         "in_band": 6,
-        "severed_inc": 42,
-        "severed_theta": "0.8400000"
+        "law_error": 2e-05,
+        "shut_facets": 2
       }
     }
   ],

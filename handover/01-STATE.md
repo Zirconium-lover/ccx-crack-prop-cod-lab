@@ -105,6 +105,35 @@ attempt 3U, `dtime = 1.23596e-06`, no new status line in 120 s. The recorded
 exactly what to expect from that. **So `s3rad` severance was not reached in
 this session**, and every full-scale statement here stops at `theta=0.255`.
 
+**Correction to the recorded second-wall result: `AUTOSPC_FORCE`'s 554 -> 930
+was measured on TWO threads and is not robust.** `run_s3rad.sh` defaults to
+`OMP_NUM_THREADS=6` but the recorded gain was taken at two. Re-run at **four**,
+same deck, same switch, same PARDISO, the run does not pass the second wall at
+all: it stalls at **increment 604, `theta = 0.255032`**, `dtime` 1.24e-06, no
+new status line in 120 s. Both the pre-change and post-change binaries stall
+there identically, so this is a property of the mechanism and not of any
+patch. The entry in this file that reads "increment 554 -> 930, `theta` 0.2556
+-> 0.5575" should be read as **"at two threads"**, and `05-DEBT.md` §5 is the
+reason: this is exactly the thread-count non-reproducibility it warns about,
+showing up in a result the branch had been treating as settled.
+
+**What the §4 signal actually points at.** Node 1246 is a fragment held by ONE
+live bulk element with all six of its cohesive facets failed **and open**. So:
+
+- **removing dead facets cannot help it.** Its diagonal is held by the
+  tetrahedron, not by the facets — the root fix of `05-DEBT.md` §1
+  (`CCX_DAMAGE_FACET_DELETE`) would change nothing for this node;
+- what the signal points at instead is two of the judgements `06-TARGET.md`
+  lists as having **no owner**: *what counts as eroded* (should a nearly dead
+  element holding a fragment be removed?) and *what counts as converged*
+  (should a node whose `need_du` exceeds a physical length be judged at all —
+  `NEXT_TASK.md` already proposes exactly this).
+
+`AUTOSPC_FORCE` is a third answer to the same question, given at the level of
+the norm rather than the judgement, which is why it excludes 24.4x tolerance
+and still does not converge. Fixing the norm cannot fix a state the model
+should not be in.
+
 **The exclusion report is showing §4's "this fix has become a fiction"
 signal.** At that stall, in BOTH arms identically:
 
@@ -151,16 +180,33 @@ reported load falls to 1.2% of peak at severance and climbs back to **6.5% of
 peak** by `theta=1`. The model did not merely keep going, it reported a
 recovering specimen.
 
-**The fast-wrapped wall is past severance.** That deck — the one the
-crack-face regulariser was built and validated against — severs at increment
-**96**, `theta = 0.1587578`; its wall is at increment 99, `theta = 0.158766`,
-**three increments later**. The wall is unchanged and kept as a regression
-(`fast-wrapped-wall`, byte-identical to the pre-change run), and the kink is
-still real and still measured on the law itself. But it is a convergence
-failure of a specimen that had already come apart, and the regularised arm's
-`theta=1` is **420 increments** of phantom. Measured where the specimen still
-exists, the two arms sever 7.4e-04 apart in `theta` — the same figure already
-on record as the largest shift in any deletion time.
+**~~The fast-wrapped wall is past severance.~~ WITHDRAWN — it was an artefact
+of a load-path judgement that ignored compression.** The claim was that the
+deck severs at increment 96 and walls three increments later, so its wall and
+the regularised arm's `theta=1` were phantom. Making the judgement
+state-dependent removes the severance entirely: **`fast-wrapped` never loses
+its grip-to-grip load path**, and its wall at increment 99, `theta=0.158766`,
+happens on a connected specimen. Measured per increment:
+
+```
+inc=88   52 open-failed,  2 failed-but-shut   connected=1
+inc=93   53 open-failed,  1 failed-but-shut   connected=1
+inc=94   54 open-failed,  0 failed-but-shut   connected=1
+inc=96   53 open-failed,  1 failed-but-shut   connected=1   (live 2193 -> 2192)
+```
+
+`open-failed + failed-but-shut` is 54 at every one of those increments, so the
+classification is complete and consistent rather than noise. At increment 96 a
+bulk element is deleted; the old judgement lost the path there, and the one
+failed-but-compressed facet carries it. That single facet is the whole
+difference between "the regulariser was validated against a phantom" and "it
+was validated against a specimen".
+
+The lesson is the one this branch keeps re-learning: **a wall called phantom
+on a judgement nobody had measured is not a finding.** Two of the three walls
+this work called phantom — this one and the second `s3rad` wall — turned out
+to be real once the judgement was correct. Only the fast-plain 442 increments
+survive, and that deck has `0 failed-but-shut` at every census.
 
 **The census fires exactly when it should, checked against the deck's own
 state output.** On `mixed.inp` — 120 bulk elements in two halves joined by two

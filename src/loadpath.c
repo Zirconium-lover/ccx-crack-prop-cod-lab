@@ -142,6 +142,10 @@ void loadpath_init(loadpath *lp)
   memset(lp,0,sizeof(*lp));
   lp->connected=1;
   lp->sev_inc=-1;
+  /* Three consecutive converged increments.  One is what a flickering
+     judgement can produce; three is still nothing against the 178
+     increments the unguarded defect used to spend. */
+  lp->nconfirm=3;
 }
 
 void loadpath_free(loadpath *lp)
@@ -214,25 +218,65 @@ ITG loadpath_arm(loadpath *lp,ITG nk,
    facets, then the existing kernel, which is O(nkon+nk).  Against a PARDISO
    solve this is free, which is the whole reason it can run every increment
    instead of being a python script somebody remembers to run afterwards. */
+/* Is a facet OPEN?
+
+   A fully failed facet still carries load while its faces are pressed
+   together - that is how a real crack transmits compression, and
+   cohesive_uc6.f says so explicitly: for deltal(1) < 0 the normal stiffness
+   is the FULL kn, not g*kn.  So "failed" is not the same as "not a load
+   path", and treating it as such was a modelling decision dressed up as a
+   topological fact.
+
+   The normal traction is the sign that decides it, and the law already
+   writes it to stx slot 1 for every integration point:
+
+     deltal(1) >= 0   traction(1) = g*kn*deltal(1)                   >= 0
+     deltal(1) <  0   traction(1) = kn*deltal(1)                     <  0
+     inside the CCX_UC6_CONTACT_SMOOTH band, deltal(1) < 0:
+                      traction(1) = g*kn*deltal(1) - (1-g)*kn*psism  <  0
+
+   so traction(1) < 0 means compression in every branch, smoothed or sharp,
+   and needs no threshold.  ONE point in compression is enough: the facet
+   transmits through that point.
+
+   With stx unavailable the facet is reported open, which is the judgement
+   this module made before it could read the traction at all. */
+ITG loadpath_facet_open(const double *stx,ITG mi0,ITG elem,ITG nip)
+{
+  ITG j;
+  if(stx==NULL) return 1;
+  if(nip>mi0) nip=mi0;
+  for(j=0;j<nip;j++){
+    if(stx[6*(mi0*elem+j)]<0.) return 0;
+  }
+  return 1;
+}
+
 ITG loadpath_census(loadpath *lp,ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
-                    const double *xstate,ITG nstate,ITG mi0)
+                    const double *xstate,ITG nstate,ITG mi0,
+                    const double *stx)
 {
   ITG i,*ifacdead=NULL,iconn=1,nreach=0;
 
   if(!lp->armed) return 1;
 
   NNEW(ifacdead,ITG,*ne);
-  lp->nfacet=0; lp->nfacetdead=0; lp->nlive=0;
+  lp->nfacet=0; lp->nfacetdead=0; lp->nfacetshut=0; lp->nlive=0;
   for(i=0;i<*ne;i++){
     if(ipkon[i]<0) continue;
     lp->nlive++;
     if(lakon[8*i]!='U') continue;
     lp->nfacet++;
-    /* the facet half of the judgement has an owner; ask it */
+    /* the facet half of the judgement has an owner; ask it.  Failure alone
+       does not settle it - a failed facet in compression still conducts. */
     if((xstate!=NULL)&&(nstate>=4)&&
        damstate_facet_dead(xstate,nstate,mi0,i,3)){
-      ifacdead[i]=1;
-      lp->nfacetdead++;
+      if(loadpath_facet_open(stx,mi0,i,3)){
+        ifacdead[i]=1;
+        lp->nfacetdead++;
+      }else{
+        lp->nfacetshut++;
+      }
     }
   }
 
@@ -252,20 +296,37 @@ ITG loadpath_census(loadpath *lp,ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
 
 /* The latch, separated from the printing so the self test can drive it.
 
-   Severance LATCHES: a specimen that has come apart does not become a
-   specimen again.  That matters for a reason the close benchmark makes
-   concrete - a failed facet driven back into compression carries load again,
-   legitimately, and without the latch the census would flicker back to
-   "connected" and the run would look healthy.  Returns 1 on the increment
-   severance is first seen, 2 on every later increment, 0 while intact. */
+   Two mechanisms, and they answer different worries.
+
+   HYSTERESIS guards against a judgement that flickers.  Severance must be
+   confirmed on `nconfirm` CONSECUTIVE converged increments before it
+   latches; one increment that reconnects resets the count.  This is the
+   honest way to buy robustness - the alternative, a policy switch that
+   suppresses the judgement, hides it instead.  Note what is recorded: the
+   FIRST increment without a path, not the increment the latch confirmed it,
+   because the first is the physical event and the rest is confirmation.
+
+   The LATCH keeps severance from un-happening once confirmed.  A specimen
+   that has come apart does not become a specimen again, even though its
+   faces may touch and legitimately carry compression afterwards.
+
+   The cost of a false positive is stopping a live run; the cost of
+   confirming is `nconfirm` increments against the 178 the defect used to
+   waste.  That asymmetry is why the default is small and not one.
+
+   Returns 1 on the increment severance is CONFIRMED, 2 on every increment
+   after it, 3 while a loss of path is provisional, 0 while intact. */
 ITG loadpath_latch(loadpath *lp,ITG inc,double t)
 {
   if(!lp->armed) return 0;
-  if((lp->connected==0)&&(lp->sev_seen==0)){
-    lp->sev_seen=1; lp->sev_inc=inc; lp->sev_time=t;
-    return 1;
-  }
   if(lp->sev_seen){lp->ninc_past++; return 2;}
+  if(lp->connected==0){
+    if(lp->ndisc==0){lp->sev_inc=inc; lp->sev_time=t;}
+    lp->ndisc++;
+    if(lp->ndisc>=lp->nconfirm){lp->sev_seen=1; return 1;}
+    return 3;
+  }
+  lp->ndisc=0;
   return 0;
 }
 
@@ -279,6 +340,9 @@ void loadpath_note(loadpath *lp,ITG inc,double t)
   if(what==1){
     printf("\n[LOADPATH SEVERED] inc=%" ITGFORMAT " time=%.12e\n"
            "                   no surviving load path between the grips\n"
+           "                   (confirmed on %" ITGFORMAT " consecutive "
+           "converged increments; the increment above is the FIRST "
+           "without a path)\n"
            "                   endpoints: %s\n"
            "                   nodes still reachable from the reacting "
            "set: %" ITGFORMAT "\n"
@@ -286,7 +350,8 @@ void loadpath_note(loadpath *lp,ITG inc,double t)
            "facets %" ITGFORMAT " of which %" ITGFORMAT " fully failed\n"
            "                   everything after this increment is two "
            "pieces, not a specimen\n\n",
-           inc,t,lp->origin,lp->nreach,lp->nlive,lp->nfacet,lp->nfacetdead);
+           lp->sev_inc,lp->sev_time,lp->nconfirm,lp->origin,lp->nreach,
+           lp->nlive,lp->nfacet,lp->nfacetdead);
     fflush(stdout);
     return;
   }
@@ -300,17 +365,36 @@ void loadpath_note(loadpath *lp,ITG inc,double t)
   if((what==0)&&(inc>0)&&(inc%50==0)){
     printf("[LOADPATH CENSUS] inc=%" ITGFORMAT " time=%.7f connected=%"
            ITGFORMAT " reach=%" ITGFORMAT " live=%" ITGFORMAT
-           " facets=%" ITGFORMAT "/%" ITGFORMAT " failed\n",
+           " facets=%" ITGFORMAT "/%" ITGFORMAT " open-failed, %"
+           ITGFORMAT " failed-but-shut\n",
            inc,t,lp->connected,lp->nreach,lp->nlive,
-           lp->nfacetdead,lp->nfacet);
+           lp->nfacetdead,lp->nfacet,lp->nfacetshut);
+    fflush(stdout);
+  }
+
+  if(what==3){
+    printf("[LOADPATH PROVISIONAL] inc=%" ITGFORMAT " time=%.7f no load path,"
+           " %" ITGFORMAT " of %" ITGFORMAT " consecutive converged"
+           " increment(s); not severance until confirmed\n",
+           inc,t,lp->ndisc,lp->nconfirm);
     fflush(stdout);
   }
 
   if(what==2){
+    /* Say WHAT joins the pieces, not just that they are two.  05-DEBT.md
+       item 1 is stated in exactly those terms - "two separated halves
+       joined by 451 facets, 322 at the residual floor" - and a stamp that
+       omits it cannot be checked against that claim.  It also carries the
+       only reading of the state-dependent judgement that a deck can show:
+       failed-but-shut counts facets that are dead AND in compression, which
+       still conduct. */
     printf("[LOADPATH PHANTOM] inc=%" ITGFORMAT " time=%.12e is %"
            ITGFORMAT " increment(s) past severance at inc=%" ITGFORMAT
-           " (theta=%.7f); this is not a specimen\n",
-           inc,t,lp->ninc_past,lp->sev_inc,lp->sev_time);
+           " (theta=%.7f); this is not a specimen; joined by %" ITGFORMAT
+           " open-failed and %" ITGFORMAT " failed-but-shut facet(s), "
+           "connected=%" ITGFORMAT "\n",
+           inc,t,lp->ninc_past,lp->sev_inc,lp->sev_time,
+           lp->nfacetdead,lp->nfacetshut,lp->connected);
     fflush(stdout);
   }
 }
@@ -439,7 +523,7 @@ static ITG lp_chain(ITG middle_is_facet,ITG middle_deleted,ITG nfailed,
   NNEW(lp.nodesa,ITG,2); NNEW(lp.nodesb,ITG,2);
   lp.nodesa[0]=1;lp.nodesa[1]=2; lp.na=2;
   lp.nodesb[0]=7;lp.nodesb[1]=8; lp.nb=2;
-  iconn=loadpath_census(&lp,ipkon,kon,lakon,&ne,xstate,nstate,mi0);
+  iconn=loadpath_census(&lp,ipkon,kon,lakon,&ne,xstate,nstate,mi0,NULL);
   loadpath_free(&lp);
   *iconn_out=iconn;
   return iconn;
@@ -530,6 +614,47 @@ ITG loadpath_selftest(void)
     if(b!=NULL) SFREE(b);
   }
 
+  /* L: a failed facet in COMPRESSION is still a load path.  This is the
+     judgement close.inp exists to check, and it used to be a policy switch
+     instead of a measurement. */
+  {
+    ITG mi0=3,e=1,j;
+    double stx[6*3*4];
+    for(j=0;j<6*3*4;j++) stx[j]=0.;
+    lp_chk("L all points at zero traction -> open",
+           loadpath_facet_open(stx,mi0,e,3),1,&nbad);
+    stx[6*(mi0*e+1)]=+5.;                     /* one point in tension */
+    lp_chk("L tension does not close it",
+           loadpath_facet_open(stx,mi0,e,3),1,&nbad);
+    stx[6*(mi0*e+2)]=-1.e-30;                 /* one point in compression */
+    lp_chk("L one compressed point conducts",
+           loadpath_facet_open(stx,mi0,e,3),0,&nbad);
+    lp_chk("L a neighbouring facet is unaffected",
+           loadpath_facet_open(stx,mi0,0,3),1,&nbad);
+    lp_chk("L no traction available -> open, as before",
+           loadpath_facet_open(NULL,mi0,e,3),1,&nbad);
+  }
+
+  /* M: hysteresis.  A loss of path that does not persist is not severance,
+     and the increment recorded is the FIRST one, not the confirming one. */
+  {
+    loadpath lp; ITG w;
+    loadpath_init(&lp); lp.armed=1;
+    lp_chk("M default confirmation is three",lp.nconfirm,3,&nbad);
+    lp.connected=0; w=loadpath_latch(&lp,20,0.2);
+    lp_chk("M first loss is provisional",w,3,&nbad);
+    lp.connected=1; w=loadpath_latch(&lp,21,0.3);
+    lp_chk("M reconnecting clears it",w,0,&nbad);
+    lp_chk("M and resets the count",lp.ndisc,0,&nbad);
+    lp.connected=0;
+    loadpath_latch(&lp,30,0.4); loadpath_latch(&lp,31,0.5);
+    lp_chk("M still provisional at two",lp.sev_seen,0,&nbad);
+    w=loadpath_latch(&lp,32,0.6);
+    lp_chk("M confirmed at three",w,1,&nbad);
+    lp_chk("M records the FIRST increment",lp.sev_inc,30,&nbad);
+    loadpath_free(&lp);
+  }
+
   /* K: the latch.  Severance must not un-happen when a failed facet is
      driven back into compression and starts carrying load again. */
   {
@@ -537,11 +662,13 @@ ITG loadpath_selftest(void)
     loadpath_init(&lp); lp.armed=1;
     lp.connected=1; w=loadpath_latch(&lp,10,0.1);
     lp_chk("K intact reports nothing",w,0,&nbad);
-    lp.connected=0; w=loadpath_latch(&lp,11,0.2);
+    lp.connected=0;                       /* confirm it: hysteresis */
+    loadpath_latch(&lp,11,0.2); loadpath_latch(&lp,12,0.3);
+    w=loadpath_latch(&lp,13,0.4);
     lp_chk("K severance is announced once",w,1,&nbad);
-    lp_chk("K and records its increment",lp.sev_inc,11,&nbad);
+    lp_chk("K and records the first increment",lp.sev_inc,11,&nbad);
     lp.connected=1;                       /* the facet closes again */
-    w=loadpath_latch(&lp,12,0.3);
+    w=loadpath_latch(&lp,14,0.5);
     lp_chk("K reconnection does not un-sever",w,2,&nbad);
     lp_chk("K past-severance increments are counted",lp.ninc_past,1,&nbad);
     lp_chk("K severed stays severed",loadpath_severed(&lp),1,&nbad);

@@ -70,6 +70,21 @@ def severance(log):
     if re.search(r'^\[LOADPATH\] the specimen kept',txt,re.M): return 0,None
     return None,None
 
+def shut_facets(log):
+    """Facets that are fully failed AND in compression at the end of the run.
+
+    This is the only reading that checks the state-dependent load-path
+    judgement on a deck rather than in the self test: the same dead facets
+    must read as no load path while open and as a load path once closed."""
+    try: txt=open(log,errors='replace').read()
+    except OSError: return None
+    m=None
+    for m in re.finditer(r'failed-but-shut facet\(s\), connected=(-?\d+)',txt): pass
+    if m is None: return None
+    line=txt[:m.end()].rsplit('\n',1)[-1]
+    n=re.search(r'and (\d+) failed-but-shut',line)
+    return int(n.group(1)) if n else None
+
 def selftests(log,required,lines):
     """every named self test must report PASSED, no unit may report a failure
     or an error, and every required line must be present - a report that
@@ -126,6 +141,8 @@ def one(case,outroot,exe,required,lines):
         got['masked_max'],got['worst_ratio']=census(log)
     if 'severed_inc' in exp or 'severed_theta' in exp:
         got['severed_inc'],got['severed_theta']=severance(log)
+    if 'shut_facets' in exp:
+        got['shut_facets']=shut_facets(log)
     if 'check_close' in exp:
         r=sh('python3 %s/test/pathfollow/check_close.py %s --zeta %s'
              %(ROOT,rundir,case.get('zeta','0')),base_env([]))
