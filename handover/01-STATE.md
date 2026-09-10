@@ -89,6 +89,41 @@ fixes reproducibility across instruction sets, not across thread counts. Two
 runs identical for 482 attempts diverged at 483 on a 6-against-5 iteration
 count; twenty increments later they were on different walls.
 
+**Feature off is byte-identical on the TARGET deck, not just the fast ones.**
+A single-variable A/B — pre-change binary (`225439c`, no `loadpath.c` in it at
+all) against HEAD, same committed deck, same `CCX_DAMAGE_AUTOSPC_FORCE=1`,
+4 threads both arms — is **byte-identical across all 1253 status lines** of
+`m.sta`, at 42807 elements, up to the point both arms stop. This is the
+strongest form of the feature-off obligation and it now holds where it
+matters.
+
+**The second wall does not yield at 4 threads, and this is not a regression.**
+Both arms stall at the *same* state: increment 604, `theta = 0.255032`,
+attempt 3U, `dtime = 1.23596e-06`, no new status line in 120 s. The recorded
+`CCX_DAMAGE_AUTOSPC_FORCE=1` result — increment 554 → 930, `theta` 0.2556 →
+0.5575 — was measured at a different thread count, and `05-DEBT.md` §5 says
+exactly what to expect from that. **So `s3rad` severance was not reached in
+this session**, and every full-scale statement here stops at `theta=0.255`.
+
+**The exclusion report is showing §4's "this fix has become a fiction"
+signal.** At that stall, in BOTH arms identically:
+
+| | |
+|---|---|
+| node | 1246 — the node the second wall was always about |
+| excluded residual | `4.4835e-02` |
+| residual actually judged (`ram[0]`) | `4.1680e-02` |
+| tolerance | `1.8355e-03` (`0.1221 x qam`) |
+| **excluded / tolerance** | **24.4x** |
+
+`02-DIAGNOSTICS.md` §4 records the healthy peak as **1.7x**, returning to
+machine zero once the fragment resolved. Here it is 24.4x, it is *larger than
+the residual being judged*, and it is not returning to zero. Earlier in the
+same run it does return to machine zero (`1.3e-13`, `6.4e-14`), so the
+mechanism is not broken everywhere — it has stopped discriminating at this
+state. By the criterion the project wrote for itself, `CCX_DAMAGE_AUTOSPC_FORCE`
+must be revisited before any further weight is put on it.
+
 **The grips can be read off the deck.** `loadpath.c` derives them from the
 `*BOUNDARY` cards — the direction carrying the largest prescribed magnitude,
 driven nodes against nodes held at zero in that same direction. On the target

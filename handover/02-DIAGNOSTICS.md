@@ -98,6 +98,20 @@ tolerance — on one node for eight increments, then returned to machine zero
 once the fragment resolved. **If it stops returning to zero, the mechanism is
 hiding a real imbalance and must be revisited.**
 
+**It has now been seen firing.** `s3rad`, 4 threads, `AUTOSPC_FORCE=1`, at the
+stall at increment 604 / `theta=0.255032` — and identically in a pre-change
+binary, so it is a property of the mechanism and not of any recent patch:
+
+```
+excluded 4.4835e-02   ram[0] 4.1680e-02   tolerance 1.8355e-03 = 0.1221 x qam
+node 1246                                 excluded / tolerance = 24.4x
+```
+
+Read it the way this section says: 24.4x against a healthy 1.7x, *larger than
+the residual being judged*, and not returning to zero. Earlier in the same run
+it does return to machine zero (`1.3e-13`), so the mechanism discriminates
+elsewhere and has stopped discriminating here.
+
 ## 5. The convergence record — `<job>.cvg`
 
 `RESID` and `CORR` per iteration, per attempt.
