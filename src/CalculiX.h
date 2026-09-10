@@ -4168,6 +4168,21 @@ void FORTRAN(damconnectsets,(ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
           ITG *ialset,char *namea,char *nameb,ITG *iconn,ITG *nreach,
           ITG *imode,ITG *ifacdead));
 
+/* the graph walk itself, and the set lookup, called directly by
+   loadpath.c so that the judgement has one owner and the walk one
+   implementation */
+
+void FORTRAN(damconnect,(ITG *ipkon,ITG *kon,char *lakon,ITG *ne,ITG *nk,
+          ITG *nodesa,ITG *nna,ITG *nodesb,ITG *nnb,ITG *iconn,
+          ITG *nreach,ITG *ifacdead));
+
+void FORTRAN(damconnectface,(ITG *ipkon,ITG *kon,char *lakon,ITG *ne,ITG *nk,
+          ITG *nodesa,ITG *nna,ITG *nodesb,ITG *nnb,ITG *iconn,
+          ITG *nreach,ITG *ifacdead));
+
+void FORTRAN(damsetnodes,(char *set,ITG *nset,ITG *istartset,ITG *iendset,
+          ITG *ialset,char *name,ITG *nodes,ITG *n));
+
 /* detached-island detection: marks material that has lost every load
    path to ground, which BK4's orphan-node test cannot see */
 
@@ -4930,6 +4945,51 @@ ITG  damstate_dead(const damstate *s,ITG node);
 ITG  damstate_facet_dead(const double *xstate,ITG nstate,ITG mi0,
                          ITG elem,ITG nip);
 ITG  damstate_selftest(void);
+
+/* ---- THE judgement about whether the specimen is still one piece
+   (loadpath.c) ---------------------------------------------------------
+   One level above damstate: not "has this node lost its load path" but
+   "is there still a load path between the grips at all".  Measured on the
+   fast plain deck, the specimen separates at increment 65 and the run
+   walks to 507 reporting a load that RISES linearly, because the failed
+   facets are a gmin*Kn spring joining two detached halves.  See the block
+   comment in loadpath.c for the three gaps that let that happen. */
+
+typedef struct{
+  ITG armed;        /* endpoints resolved and the self test passed       */
+  ITG nk;
+  ITG na,nb;        /* reacting and driven endpoint counts               */
+  ITG *nodesa;      /* the reacting grip                                 */
+  ITG *nodesb;      /* the driven grip                                   */
+  ITG idir;         /* driven direction, 0 when the endpoints were named */
+  ITG imode;        /* 0 elements conduct through a node, 1 through a face */
+  char origin[128]; /* where the endpoints came from, for the log        */
+  ITG connected;    /* the last census                                   */
+  ITG nreach;
+  ITG nfacet,nfacetdead,nlive;
+  ITG sev_seen;     /* severance LATCHES: it does not un-happen          */
+  ITG sev_inc;
+  double sev_time;
+  ITG ninc_past;    /* increments accepted after severance               */
+}loadpath;
+
+void loadpath_init(loadpath *lp);
+void loadpath_free(loadpath *lp);
+ITG  loadpath_derive(const ITG *nodeboun,const ITG *ndirboun,
+                     const double *xboun,ITG nboun,ITG nk,
+                     ITG **held,ITG *nheld,ITG **driven,ITG *ndriven);
+ITG  loadpath_arm(loadpath *lp,ITG nk,
+                  char *set,ITG *nset,ITG *istartset,ITG *iendset,ITG *ialset,
+                  const char *namea,const char *nameb,
+                  const ITG *nodeboun,const ITG *ndirboun,const double *xboun,
+                  ITG nboun,ITG imode);
+ITG  loadpath_census(loadpath *lp,ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
+                     const double *xstate,ITG nstate,ITG mi0);
+ITG  loadpath_latch(loadpath *lp,ITG inc,double t);
+void loadpath_note(loadpath *lp,ITG inc,double t);
+void loadpath_summary(const loadpath *lp);
+ITG  loadpath_severed(const loadpath *lp);
+ITG  loadpath_selftest(void);
 
 /* ---- the backtracking ladder of the damage line search (lsladder.c) --
    Extracted from the Newton loop because it was wrong and the way it was

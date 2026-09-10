@@ -135,6 +135,15 @@ ITG damage_spc_count=0;
    globals above are views onto it once it has been updated. */
 damstate damage_dstate={0,NULL,NULL,NULL,NULL,0,0.,0};
 
+/* [LOADPATH] the single owner of the judgement one level up: whether a
+   load path still links the grips at all, i.e. whether what is being
+   solved is still a specimen.  Asked once per converged increment. */
+loadpath damage_lp;
+ITG damage_lp_ready=0;
+ITG damage_lp_stop=1;
+ITG damage_lp_armed_once=0;
+ITG damage_lp_testok=0;
+
 /* Number of active damage integration points for the standard 3-D
    continuum elements used by calcdamage.  For uncommon/composite
    formulations fall back to mi[0], i.e. the allocated damage stride. */
@@ -1947,7 +1956,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
     damage_diss_probe=0,damage_batch_list=0,
     damage_float_new=0,damage_float_reach=0,damage_float_total=0,
     damage_float_coh=0,damage_float_isl=0,
-    damage_conn=1,damage_conn_reach=0,damage_fracture_complete=0,
+    damage_fracture_complete=0,
     /* bounded exactly like the DE1.3 terminal batch: once the hydride is
        gone every facet on its surface loses its plus side at the same
        instant, and removing all of them in one topology transaction is a
@@ -1960,7 +1969,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
     damage_null_cnt=0,damage_null_seed=987654321,damage_null_nit=4,
     damage_stab_maxdof=0,damage_stab_maxdead=0,*damage_stab_node=NULL,
     damage_deadsole_total=0,damage_deadall_total=0,damage_deadall_nodes=0,
-    damage_fracture_link=0,damage_deadfacet=0,damage_facetdel=0,
+    damage_fracture_link=0,damage_facetdel=0,
     damage_facetdel_new=0,damage_facetdel_total=0,damage_arc=0,damage_diss_step=1,damage_spc_neg=0,damage_stiff_nneg=0,
     damage_ls_trials=DAMAGE_LINESEARCH_MAX_TRIALS,
     damage_bare=0,damage_bare_rep=-1,damage_free_probe=0,
@@ -2906,6 +2915,90 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
   
   ne0=*ne;nkon0=*nkon;neold=*ne;
 
+  /* [LOADPATH] Arm the specimen-level judgement: is there still a load
+     path between the grips at all.
+
+     This sits OUTSIDE the `if(*ndmat_>0)` block below on purpose.  The
+     block below is where every damage switch is read, and putting the
+     judgement there would have repeated the defect it exists to remove:
+     whether the specimen is still in one piece has nothing to do with
+     whether the deck happens to declare a bulk damage material.  Measured:
+     test/pathfollow/close.inp is 24 bulk elements in two halves joined by
+     two cohesive facets and nothing else, both facets reach the failure
+     flag, and with the arming inside that block it was never judged at all.
+
+     Armed when the deck can actually come apart - it has a damage material
+     or a cohesive element - and not otherwise, so a stock elastic run pays
+     nothing. */
+  {
+    ITG lp_nu=0,lp_i;
+    for(lp_i=0;lp_i<*ne;lp_i++) if(lakon[8*lp_i]=='U') lp_nu++;
+
+    if((damage_de13_env=getenv("CCX_FRACTURE_LINK"))!=NULL){
+      if((strcmp(damage_de13_env,"FACE")==0)||
+         (strcmp(damage_de13_env,"face")==0)) damage_fracture_link=1;
+    }
+    if((damage_de13_env=getenv("CCX_FRACTURE_PAST_SEVERANCE"))!=NULL){
+      damage_lp_stop=(strcmp(damage_de13_env,"0")==0)?1:0;
+    }
+    damage_fracture_env=getenv("CCX_FRACTURE_TERMINATION");
+    if(damage_fracture_env!=NULL){
+      damage_fracture_seta=strdup(damage_fracture_env);
+      damage_fracture_setb=strchr(damage_fracture_seta,':');
+      if(damage_fracture_setb!=NULL){
+        *damage_fracture_setb=0;
+        damage_fracture_setb++;
+      }else{
+        free(damage_fracture_seta);
+        damage_fracture_seta=NULL;
+        printf("[LOADPATH] *WARNING: expected "
+               "CCX_FRACTURE_TERMINATION=SETA:SETB; ignored, and the "
+               "endpoints come from the deck instead\n");
+      }
+    }
+
+    if((*ndmat_>0)||(lp_nu>0)){
+      /* nonlingeo() is entered once per STEP.  Initialise on the first
+         entry only and merely release the endpoint lists on later ones:
+         the severance latch has to survive a step boundary, or a specimen
+         that came apart in step 1 would be judged intact again at the top
+         of step 2.  close.inp is exactly that deck - it severs in tension
+         at the end of step 1 and step 2 exists to close the crack. */
+      if(damage_lp_armed_once==0){
+        loadpath_init(&damage_lp);
+        damage_lp_armed_once=1;
+        damage_lp_testok=(loadpath_selftest()==0);
+      }else{
+        loadpath_free(&damage_lp);
+      }
+      if(!damage_lp_testok){
+        printf("[LOADPATH] *ERROR: the specimen-level load-path self test "
+               "failed; this run will make NO statement about whether the "
+               "specimen stayed in one piece, rather than judging it by a "
+               "rule that is not the one that was tested.\n");
+        damage_lp_ready=0;
+      }else{
+        damage_lp_ready=loadpath_arm(&damage_lp,*nk,set,nset,istartset,
+                                     iendset,ialset,
+                                     damage_fracture_seta,
+                                     damage_fracture_setb,
+                                     nodeboun,ndirboun,xboun,*nboun,
+                                     damage_fracture_link);
+        if(damage_lp_ready){
+          printf("[LOADPATH] grip-to-grip connectivity is checked every "
+                 "converged increment; endpoints %s.  A cohesive facet "
+                 "whose every integration point has failed does not count "
+                 "as a load path.  On severance the run %s.\n",
+                 damage_lp.origin,
+                 damage_lp_stop?"stops":
+                 "CONTINUES (CCX_FRACTURE_PAST_SEVERANCE), and every "
+                 "increment after it is stamped as phantom");
+        }
+      }
+      fflush(stdout);
+    }
+  }
+
   /* DE1.2/DM2.0 progressive damage is enabled for either the historical
      four-constant Rice-Tracey evolution record or the new type-3 tabulated
      ductile fracture-locus record.  Both use the same Newton-integrated
@@ -3323,15 +3416,6 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
          once.  Making the threshold settable lets that be measured
          instead of argued about. */
 
-      if((damage_de13_env=getenv("CCX_FRACTURE_LINK"))!=NULL){
-        if((strcmp(damage_de13_env,"FACE")==0)||
-           (strcmp(damage_de13_env,"face")==0)){
-          damage_fracture_link=1;
-        }else if((strcmp(damage_de13_env,"NODE")!=0)&&
-                 (strcmp(damage_de13_env,"node")!=0)){
-          printf("[FRACTURE TERMINATION] *WARNING: CCX_FRACTURE_LINK=%s is not NODE or FACE; keeping NODE\n",damage_de13_env);
-        }
-      }
       /* ---- CCX_DAMAGE_TR_DOGLEG ---------------------------------------
 
          A root-finding TRUST REGION with a dogleg step, on the ORIGINAL
@@ -3574,62 +3658,14 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
         fflush(stdout);FORTRAN(stop,());
       }
 
-      damage_fracture_env=getenv("CCX_FRACTURE_TERMINATION");
-      if(damage_fracture_env!=NULL){
-        damage_fracture_seta=strdup(damage_fracture_env);
-        damage_fracture_setb=strchr(damage_fracture_seta,':');
-        if(damage_fracture_setb!=NULL){
-          *damage_fracture_setb=0;
-          damage_fracture_setb++;
-        }else{
-          free(damage_fracture_seta);
-          damage_fracture_seta=NULL;
-          printf("[FRACTURE TERMINATION] *WARNING: expected "
-                 "CCX_FRACTURE_TERMINATION=SETA:SETB; ignored\n");
-        }
-        if(damage_fracture_seta!=NULL){
-
-          /* blank padded to 81 for the Fortran side: the FORTRAN macro
-             passes no hidden string length, so an assumed-length dummy
-             argument there would read garbage */
-
-          memset(damage_fracture_a,' ',81);
-          memset(damage_fracture_b,' ',81);
-          memcpy(damage_fracture_a,damage_fracture_seta,
-                 (strlen(damage_fracture_seta)<80)?
-                 strlen(damage_fracture_seta):80);
-          memcpy(damage_fracture_b,damage_fracture_setb,
-                 (strlen(damage_fracture_setb)<80)?
-                 strlen(damage_fracture_setb):80);
-          printf("[FRACTURE TERMINATION] the run stops as soon as no "
-                 "surviving element links %s to %s, elements conducting "
-                 "through a shared %s\n",
-                 damage_fracture_seta,damage_fracture_setb,
-                 damage_fracture_link?"FACE":"node");
-        }
-      }
-      /* Exclude a fully debonded cohesive facet from the TERMINATION
-         connectivity.  A UC6 facet is never deleted - cohesive_uc6.f pins
-         g at gmin - so once it has failed it still reads as a load path for
-         ever, and on an interface-dominated fracture [FRACTURE COMPLETE] can
-         then never fire.  Measured on DHC1 with facet viscosity: the specimen
-         carries 0.0% of peak with 206 of 416 facets fully failed, and an
-         offline replay puts severance at t=0.6100 while the run was driven on
-         to 0.7124 (E-90).
-
-         Failure is read from xstate slot 4, which resultsmech_uc6.f already
-         writes as an explicit flag and which nothing else reads.  Like
-         CCX_FRACTURE_LINK this deletes nothing and changes no equation - only
-         the moment the run may stop - so it carries none of the risk that sank
-         damfloatface (E-57, E-72).  Default OFF. */
-      if((damage_de13_env=getenv("CCX_FRACTURE_DEADFACET"))!=NULL){
-        damage_deadfacet=(strcmp(damage_de13_env,"0")==0)?0:1;
-        if(damage_deadfacet){
-          printf("[FRACTURE TERMINATION] a cohesive facet whose every "
-                 "integration point has failed is excluded from the load "
-                 "path\n");
-        }
-      }
+      /* CCX_FRACTURE_DEADFACET is retired.  It made "a fully failed
+         cohesive facet is not a load path" opt-in, and the one runner that
+         armed the connectivity test - test/s3rad/run_s3rad.sh - explicitly
+         unset it, which is how a 42807-element specimen came to be driven
+         178 increments past its own severance.  A judgement that is only
+         correct when somebody remembers to ask for it is not a judgement.
+         loadpath.c now applies it unconditionally, and damstate_facet_dead
+         still owns the "every integration point has failed" test. */
 
       /* CCX_DAMAGE_FACET_DELETE - the same failure flag as
          CCX_FRACTURE_DEADFACET, but acted on in the EQUATIONS instead of only
@@ -5493,7 +5529,48 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
       }
 
       /* previous increment converged: update the initial values */
-	  
+
+      /* [LOADPATH] Ask the owner whether that increment was still a
+         specimen.
+
+         The site matters as much as the judgement.  The pre-existing
+         connectivity test sat inside `if(damage_tent_count>0)`, the bulk
+         deletion transaction, so it could only fire in an increment that
+         terminally deleted a C3D4 - which means an interface-dominated
+         fracture, where facets fail and no bulk erodes, could never reach
+         it however carefully it was configured.  Here it is asked once per
+         converged increment, unconditionally.
+
+         Cost: one O(nkon+nk) graph walk against a PARDISO solve. */
+
+      if(damage_lp_ready&&(iinc>0)){
+        loadpath_census(&damage_lp,ipkon,kon,lakon,ne,xstate,*nstate_,mi[0]);
+        loadpath_note(&damage_lp,iinc,theta**tper);
+
+        /* Policy, applied by the consumer, not by the owner: once the
+           specimen has come apart there is nothing left to solve, so the
+           run ends.  This reuses damage_fracture_complete, the existing
+           and only loop exit, rather than adding a second one.
+
+           CCX_FRACTURE_PAST_SEVERANCE=1 keeps going, and is not a way of
+           ignoring the result: every further increment is stamped
+           [LOADPATH PHANTOM] and the run's summary says how many there
+           were.  test/pathfollow/close.inp needs it - that benchmark
+           drives a facet past failure on purpose and then closes it, to
+           measure the compressive branch of a crack face, so it is
+           severed in tension by design and the interesting half of the
+           test comes afterwards. */
+        if(loadpath_severed(&damage_lp)&&damage_lp_stop){
+          damage_fracture_complete=1;
+          /* `continue` goes straight to the loop condition, which
+             damage_fracture_complete has just made false, so the run ends
+             ON the increment that severed rather than one past it.  The
+             last converged state is already in vold/sti and is what the
+             post-loop output writes. */
+          continue;
+        }
+      }
+
       iinc++;
       jprint++;
       damage_active_pass=0;
@@ -13740,60 +13817,19 @@ damage_active_set_closed:
         }
         fflush(stdout);
 
-        /* Configurable fracture termination.
+        /* [LOADPATH] The connectivity test that used to live here has
+           moved to the per-increment census in loadpath.c.
 
-           CCX_FRACTURE_TERMINATION="SETA:SETB" names two node sets whose
-           load path is the thing being destroyed:
+           It was measurably weaker in the same three ways every time:
+           it ran only inside this block, so it needed a bulk deletion in
+           the very increment the specimen came apart; it needed
+           CCX_FRACTURE_TERMINATION to name two node sets by hand; and it
+           needed CCX_FRACTURE_DEADFACET on top of that before a fully
+           failed facet stopped counting as a load path.  Same kernel, same
+           facet judgement, three conditions instead of none.  Running both
+           would be a seventh overlapping mechanism, so this one is gone
+           rather than kept as insurance. */
 
-             tension   Face_X0_nset:Face_XL_nset
-             Lame      InnerPressure_nset:OuterRadius_nset
-
-           Once no chain of surviving elements links them, the specimen
-           has separated and every further increment is a zero-load walk
-           to the end of the step.  Stopping here is a demonstrated loss
-           of the load-bearing path, not an increment-size failure. */
-
-        if((damage_fracture_seta!=NULL)&&(damage_fracture_complete==0)){
-          ITG *damage_ifacdead=NULL,ifd_i,ifd_n=0;
-          NNEW(damage_ifacdead,ITG,*ne);
-          if(damage_deadfacet&&(*nstate_>=4)){
-            /* [DAMSTATE] the same judgement, asked of the one owner.  The
-               three-point count and the reason it must not be mi[0] live in
-               damstate_facet_dead, with a test on both branches. */
-            for(ifd_i=0;ifd_i<*ne;ifd_i++){
-              if(ipkon[ifd_i]<0) continue;
-              if(lakon[8*ifd_i]!='U') continue;
-              if(damstate_facet_dead(xstate,*nstate_,mi[0],ifd_i,3)){
-                damage_ifacdead[ifd_i]=1;
-                ifd_n++;
-              }
-            }
-          }
-          damage_conn=1;
-          damage_conn_reach=0;
-          FORTRAN(damconnectsets,(ipkon,kon,lakon,ne,nk,set,nset,
-                                  istartset,iendset,ialset,
-                                  damage_fracture_a,damage_fracture_b,
-                                  &damage_conn,&damage_conn_reach,
-                                  &damage_fracture_link,damage_ifacdead));
-          if(damage_conn==0){
-            damage_fracture_complete=1;
-            printf("\n[FRACTURE COMPLETE] inc=%" ITGFORMAT
-                   " step_time=%.12e\n"
-                   "                    no surviving load path between "
-                   "%s and %s\n"
-                   "                    nodes reachable from the first "
-                   "set: %" ITGFORMAT "\n\n",
-                   iinc,theta**tper,damage_fracture_seta,
-                   damage_fracture_setb,damage_conn_reach);
-            if(ifd_n>0){
-              printf("                    excluded %" ITGFORMAT
-                     " fully failed cohesive facet(s)\n",ifd_n);
-            }
-            fflush(stdout);
-          }
-          SFREE(damage_ifacdead);
-        }
 
         SFREE(damage_tent_elem); damage_tent_elem=NULL;
         SFREE(damage_tent_mat); damage_tent_mat=NULL;
@@ -16090,5 +16126,16 @@ damage_controller_done:
 
   SFREE(iponoel);
   
+  /* [LOADPATH] the step's verdict on itself.  Outside every damage gate
+     on purpose: a deck with no bulk damage material still has to say
+     whether the thing it solved was still in one piece.  A result quoted
+     from this job is now quoted next to a line that says so. */
+  if(damage_lp_ready){
+    loadpath_summary(&damage_lp);
+    loadpath_free(&damage_lp);
+    damage_lp_ready=0;
+  }
+  fflush(stdout);
+
   return;
 }

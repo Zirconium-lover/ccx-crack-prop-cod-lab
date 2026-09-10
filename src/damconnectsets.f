@@ -177,3 +177,37 @@
       n=m
       return
       end
+!
+!     ------------------------------------------------------------------
+!
+      subroutine damsetnodes(set,nset,istartset,iendset,ialset,name,
+     &     nodes,n)
+!
+!     Expose a resolved node set to the C side, so loadpath.c can own the
+!     endpoints without a second copy of the set lookup.  Resolution is the
+!     existing, in-use damsetfind/damsetcount/damsetfill; nothing new is
+!     decided here.
+!
+!     Called twice: once with n as the only output to size the array (the
+!     caller passes a null pointer for nodes, so it must not be touched when
+!     n comes in as 0), then again to fill it.
+!
+      implicit none
+!
+      character*81 set(*)
+      character*81 name
+      integer nset,istartset(*),iendset(*),ialset(*),nodes(*),n,
+     &     id,na,nwant
+!
+      nwant=n
+      n=0
+      call damsetfind(set,nset,name,id)
+      if(id.le.0) return
+      call damsetcount(istartset,iendset,ialset,id,na)
+      if(na.le.0) return
+      n=na
+      if(nwant.le.0) return
+      if(na.gt.nwant) n=nwant
+      call damsetfill(istartset,iendset,ialset,id,nodes,n)
+      return
+      end

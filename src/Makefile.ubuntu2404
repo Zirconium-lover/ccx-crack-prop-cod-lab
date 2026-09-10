@@ -41,11 +41,22 @@ LIBS = -lspooles -larpack -llapack -lblas -fopenmp -lpthread -lm -ldl
 
 include Makefile.inc
 
+
 SCCXMAIN = ccx_$(CCXVERSION).c
 OCCXF = $(SCCXF:.f=.o)
 OCCXC = $(SCCXC:.c=.o)
 
 all: ccx_$(CCXVERSION)
+
+# damswitch.c reports which CCX_* names this binary reads, from the
+# generated damswitch_list.h.  Without this dependency the header can be
+# regenerated and the object not rebuilt, and the binary then reports a
+# switch it does read as UNKNOWN - the exact "an A/B that is not wrong but
+# uninformative" failure the banner exists to prevent.  Measured: that is
+# how CCX_FRACTURE_PAST_SEVERANCE first showed up as UNKNOWN.
+# It must stay BELOW `all:`, or it becomes make's default goal.
+damswitch.o: damswitch_list.h
+
 
 ccx_$(CCXVERSION).a: $(OCCXF) $(OCCXC)
 	ar rs $@ $?

@@ -1113,6 +1113,7 @@ crackcontrol.c \
 topodiag.c \
 lsladder.c \
 damstate.c \
+loadpath.c \
 damswitch.c \
 pardiso_cp.c \
 pastix.c \
