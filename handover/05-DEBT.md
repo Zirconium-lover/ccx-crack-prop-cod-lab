@@ -156,8 +156,12 @@ measured a wall attributable to either — **do not regularise them on faith**.
 
 ## 7. Smaller items
 
-- `src/ccx_2.22`, a 6.5 MB ELF executable, is **tracked in git**, inherited
-  from the original-sources import. The working brief says binaries stay out.
+- ~~`src/ccx_2.22`, a 6.5 MB ELF executable, is **tracked in git**.~~ **Done.**
+  It was a build output of the inherited upstream `src/Makefile`, which
+  targets `ccx_2.22.c` — a file that is not in this tree. Nothing on any build
+  path used it. Removed from HEAD and added to `.gitignore`, which had only
+  ever matched `ccx_2.23*`. It remains in history; removing it from there
+  needs a rewrite nobody should do to a shared branch.
 - Diagnostic probes are compiled into the solve path and gated by
   environment variables rather than isolated behind one interface.
 - `CCX_DAMAGE_AUTOSPC` is silently clamped at `1.e-1`. Legitimate as a safety

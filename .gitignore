@@ -20,6 +20,11 @@
 ccx_2.23
 ccx_2.23step
 ccx_2.23_pardiso
+# the inherited upstream Makefile builds ccx_2.22 from ccx_2.22.c, which is
+# not in this tree; the 6.5 MB ELF it left behind was tracked for years
+# because the ignore rules only ever covered 2.23 (05-DEBT.md item 7)
+src/ccx_2.22
+ccx_2.22
 build-mkl/
 build-mkl*/
 test/pathfollow/mixed_*.inp
