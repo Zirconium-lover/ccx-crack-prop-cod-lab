@@ -4997,6 +4997,18 @@ void loadpath_report_at_exit(loadpath *lp);
 ITG  loadpath_severed(const loadpath *lp);
 ITG  loadpath_selftest(void);
 
+/* ---- what counts as CONVERGED (convstate.c) --------------------------
+   Measurement only for now: need_du = |R|/k against the grip travel, the
+   dimensionless reading 02-DIAGNOSTICS.md 2 prefers to any stiffness
+   ratio.  It decides nothing until a deck exists that reproduces the
+   class it is meant to judge.  */
+double convstate_needdu(double r,double k);
+double convstate_griplength(const double *vold,ITG mt,
+                            const ITG *nodes,ITG n,ITG idir);
+void convstate_report(ITG inc,ITG node,double r,double k,double grip,
+                      double tol);
+ITG  convstate_selftest(void);
+
 /* ---- the backtracking ladder of the damage line search (lsladder.c) --
    Extracted from the Newton loop because it was wrong and the way it was
    wrong is worth a regression test.  See the block comment there. */

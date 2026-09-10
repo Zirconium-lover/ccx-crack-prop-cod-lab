@@ -195,7 +195,8 @@
     "DAMAGE TR SELFTEST",
     "DAMSTATE",
     "LSLADDER",
-    "LOADPATH"
+    "LOADPATH",
+    "CONVSTATE"
   ],
   "required_lines": [
     "[SWITCHES] this binary reads",

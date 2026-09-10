@@ -2968,6 +2968,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
         loadpath_init(&damage_lp);
         damage_lp_armed_once=1;
         damage_lp_testok=(loadpath_selftest()==0);
+        convstate_selftest();
       }else{
         loadpath_free(&damage_lp);
       }
@@ -12440,6 +12441,17 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 	    printf(" largest residual force= %f in node %" ITGFORMAT
 		   " and dof %" ITGFORMAT "\n",
 		   ram[0],inode,idir);
+	    /* [CONVSTATE] the same peak, read as a LENGTH.  Measurement only:
+	       it decides nothing and changes no criterion - see convstate.c
+	       for why the measurement has to come before the judgement. */
+	    if((damage_dstate.nk>0)&&(inode>=1)&&(inode<=damage_dstate.nk)){
+	      convstate_report(iinc,inode,ram[0],
+	                       damage_dstate.diag[inode-1],
+	                       convstate_griplength(vold,mt,damage_lp.nodesb,
+	                                            damage_lp.nb,
+	                                            damage_lp.idir),
+	                       ctrl[18]*qam[0]);
+	    }
 	  }
 	  printf(" largest increment of disp= %e\n",uam[0]);
 	  if((ITG)cam[3]==0){

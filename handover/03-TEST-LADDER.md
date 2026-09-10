@@ -90,7 +90,22 @@ residual misses tolerance by 520x where the `s3rad` wall missed by 5.7%.
 The class to reproduce is: **a node with a healthy diagonal whose residual is
 irreducible** — `need_du = |R|/k` of order the grip displacement, so no
 physically meaningful step can equilibrate it, while the diagonal test sees
-nothing wrong. On `s3rad` that is a node at the crack front that has lost 20
+nothing wrong.
+
+**That statement is now a number, not a claim.** `convstate.c` reports
+`need_du` and `need_du/grip` at the peak residual of every iteration, so the
+distance between the two wall classes can be read off a 24-second run:
+
+| deck, at its wall | node | `need_du` | grip | `need_du/grip` |
+|---|---|---|---|---|
+| `fast-wrapped`, increment 99 | 440 | 5.98e-04 | 0.1588 | **3.8e-03** |
+| what the class needs | — | — | — | **of order 1** |
+
+So `fast-wrapped` misses the class by more than two decades, measured rather
+than argued. Any candidate rung can now be judged in seconds against the one
+number that defines the class, instead of by running it and seeing whether it
+"feels like" the `s3rad` wall — which is how the four rejected decks in
+`04-REFUTED.md` were judged. On `s3rad` that is a node at the crack front that has lost 20
 of its 24 elements but keeps four.
 
 Building this rung is the highest-value test work available. It would make
