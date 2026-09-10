@@ -1,45 +1,97 @@
 # 5. The debt, in priority order
 
-## 1. A dead facet is a load path for ever — and it invalidates late results
+## 1. A dead facet is a load path for ever — DONE, and what it cost
 
-`cohesive_uc6.f` pins `g = max(gmin, 1-dvisc)` with `gmin` from the deck
-(`1e-5` here), and terminal deletion in `nonlingeo.c` scans `C3D4` **only**.
-So a fully failed cohesive facet never disappears and never stops carrying
-its residual stiffness.
+**Fixed in `src/loadpath.c`.** Kept here because the anatomy is the useful
+part: the judgement was not missing, it was unreachable, and it was
+unreachable in three independent ways at once.
 
-Consequences, measured on `s3rad`:
+`cohesive_uc6.f` pins `g = max(gmin, 1-dvisc)` and terminal deletion scans
+`C3D4` only, so a fully failed facet never disappears and never stops
+carrying `gmin*Kn`. The code already knew how to notice. It could not:
+
+| gap | measured |
+|---|---|
+| the test ran only when `CCX_FRACTURE_TERMINATION` named two node sets by hand | off for any deck nobody configured |
+| a dead facet still counted as conducting unless `CCX_FRACTURE_DEADFACET` was **also** set | `run_s3rad.sh` explicitly `unset` it |
+| the call site was inside `if(damage_tent_count>0)` — the **bulk deletion transaction** | an interface-dominated fracture could never reach it however carefully it was configured |
+
+The third is the one that hides the other two: the guard could be configured
+correctly and still never run. That is why the source comment recording the
+DHC1 interface case ("severance at t=0.6100 while the run was driven on to
+0.7124") sits right next to a fix that could not have fired there.
+
+### What it looked like on a 46-second deck
+
+The fast plain deck is the same defect without the 2.3 h. 1 thread, PARDISO:
 
 | | |
 |---|---|
-| the metal loses grip-to-grip connectivity at | increment **753**, `theta = 0.3411981` |
-| the run continues to | increment **931**, `theta = 0.5575` |
-| so it runs past separation for | **+63% of grip displacement** |
-| what is being solved there | two separated halves joined by **451 facets**, 322 at the residual floor |
-| grip reaction at `theta=0.4064` | **0.056%** of peak |
+| grip-to-grip connectivity through live bulk lost at | increment **65**, `theta = 0.1175` |
+| the run continued to | increment **507**, `theta = 1.0` |
+| deletions after severance | **0** — all 90 are complete by increment 65 |
+| grip reaction, `Fx/theta` over `theta` 0.19…1.0 | **constant to 0.04%** |
 
-This is the single worst defect in the tree, because it does not produce a
-wrong number — it produces a **plausible** one. It manufactured a "third
-wall" that consumed an entire investigation and that nobody needed to pass:
-that wall is a convergence failure of a configuration that stopped being a
-specimen 178 increments earlier.
+That last row is the reading to keep. Post-severance the model reports a
+*perfect linear spring*: the reaction falls to 1.2% of peak at severance and
+then climbs back to **6.5% of peak** by `theta=1`, because two detached halves
+are joined by 36 failed facets at `gmin*Kn` and the grip keeps pulling. The
+defect does not merely waste increments — it manufactures a recovering
+load-displacement curve.
 
-**It also cost the same investigation its framing twice.** A wall was treated
-as the frontier while the severance number sat in the same branch, and two
-arms were compared at their stopping increments — both inside the phantom
-regime — instead of at severance, where they agree to 0.19%.
+### The fix
 
-Two levels of fix, and they are not alternatives:
+One owner, on the `damstate.c`/`lsladder.c` pattern: a self test, a refusal to
+arm if the test fails, and consumers that ask rather than recompute. It
+composes rather than re-derives — the facet half is still
+`damstate_facet_dead`, the walk is still `damconnect` — and changes no
+equation.
 
-- **Root**: let a fully failed facet actually be removed, or stop counting it
-  as connectivity. Then the halves become free bodies, the matrix is
-  singular, and the run must stop — the model finds out on its own.
-- **Guard**: `CCX_FRACTURE_TERMINATION` / `CCX_FRACTURE_DEADFACET` already
-  detect loss of load path. On the fast deck DEADFACET stops the run at
-  increment 65 instead of walking to 507 — **442 increments after the
-  specimen separated**, the same blindness, visible in 58 seconds.
+- asked **once per converged increment**, unconditionally;
+- endpoints from the deck's own `*BOUNDARY` cards when nobody names them: the
+  driven direction against the reacting one. Reproduces the hand-named pair
+  exactly on every deck here and correctly ignores the direction-2/3
+  rigid-body fixpoints;
+- severance **latches**, is announced once, stamps every later increment, and
+  the run prints its own verdict at the end;
+- on severance the run **stops**;
+- the old mechanism and `CCX_FRACTURE_DEADFACET` are **deleted**, not kept
+  beside it.
 
-Note the root fix makes `s3rad` substantially cheaper as a side effect, since
-a fifth of its runtime is spent after the specimen broke.
+Proof obligations, all met and all measured rather than assumed:
+
+- **feature off is byte-identical**: with `CCX_FRACTURE_PAST_SEVERANCE=1` both
+  wrapped cases reproduce the pre-change `m.sta` and `m.damage` exactly;
+- every truncated case is **byte-identical up to severance**, and every
+  deletion history is byte-identical in full. What was removed is the phantom
+  tail and nothing else;
+- the gate goes **red** when the defect is reinjected — all 11 cases, and the
+  self test trips too, so the module refuses to arm rather than misjudging.
+
+### The one that must not be generalised
+
+`CCX_FRACTURE_PAST_SEVERANCE` exists because **severance is not always a
+reason to stop**, and the deck that proves it is already in the tree.
+`test/pathfollow/close.inp` is two blocks joined by two cohesive facets and
+nothing else; it drives them past `df` on purpose so `g -> gmin` (measured:
+`xstate(4)=1.0` on both facets from `t=1.38`), and then **closes** them,
+because the compressive branch of a crack face is what the benchmark
+measures. A dead facet in compression is a real load path.
+
+The naive design — sever means stop, always — was rejected by that deck
+before any of it was written. It is the cheapest hypothesis rejection in this
+document: one 0.3 s run.
+
+### What is still open here
+
+The **root** fix named in the original entry is still not done. A fully
+failed facet is still in the equations carrying `gmin*Kn`; what changed is
+that the run now *knows* and stops. `CCX_DAMAGE_FACET_DELETE` already exists
+for the equation-level removal and is still default OFF and still unvalidated
+— it changes the equations and carries the risk that sank `damfloatface`.
+Doing it properly would let the halves become free bodies and the matrix
+become singular, so the model would find out on its own rather than being
+told.
 
 ## 2. 139 switches, 122 that no test sets
 

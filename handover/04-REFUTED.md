@@ -37,6 +37,15 @@ same form: what was tried, and the measurement that killed it.
 | the same, weaker wrap (`Tn0=800`) | worse: 1.9e-01, only 36 deletions |
 | a wrapped block spanning the **full** width | `theta=1`, worst 2.97e-01: it is the only load path, so it debonds wholesale and unloads |
 
+## About the specimen-level load-path judgement
+
+| tried | measurement that rejected it |
+|---|---|
+| "severance means stop, always" | `test/pathfollow/close.inp` is two blocks joined by **two facets and nothing else**, drives them past `df` on purpose (`xstate(4)=1.0` on both from `t=1.38`) and then **closes** them. Stopping at severance destroys the compressive step the benchmark exists to measure. A dead facet in compression is a real load path — 0.3 s to reject |
+| arming the judgement inside the damage-switch block, next to everything else | that block is `if(*ndmat_>0)`. `close.inp` has no bulk damage material, so it was **never judged at all** — the same "judgement behind a gate that has nothing to do with the judgement" the module exists to remove. Arm on a property of the deck (a damage material **or** a cohesive element), not on a switch |
+| re-arming per step with `loadpath_init` | `nonlingeo()` is entered once per STEP, so the severance latch was cleared at the step boundary and a specimen that came apart in step 1 was judged intact at the top of step 2 |
+| trusting `--check` on the generated switch registry after regenerating it | the registry was current and the **binary** still reported the new switch as `UNKNOWN`: `damswitch.o` had no dependency on the generated header, so it was never recompiled. The `[SWITCHES]` banner caught itself. The makefiles now carry the dependency |
+
 ## Corrections to earlier conclusions, kept because the reasoning recurs
 
 - **"The residual peaks at node 1244."** No — the *correction* peaks there.
@@ -50,6 +59,21 @@ same form: what was tried, and the measurement that killed it.
   node, so the decision branch was never exercised. The threshold is clamped
   at `1.e-1` in the source and that deck's worst node reaches `1.0406e-01`,
   missing it by 4%.
+- **"The fast-wrapped deck walls on the crack-face kink."** True, and
+  incomplete in the way that matters. That deck **severs at increment 96,
+  `theta = 0.1587578`**, and the wall is at increment 99, `theta = 0.158766` —
+  **three increments and 0.005% of load factor past severance**. The wall is
+  real, the kink is real and still measured on the law itself
+  (`close-sharp`, ratio 1e+06), and the regulariser still removes it — but it
+  is a convergence failure of a specimen that had already come apart. It is
+  kept as a regression (`fast-wrapped-wall`, byte-identical to the old run)
+  rather than as a frontier.
+- **"The regulariser takes the wrapped deck to `theta=1`."** It does, and
+  **420 of those increments are past severance**. Compared where the specimen
+  still exists, the two arms sever at `theta` 0.1587578 (sharp) against
+  0.1595 (blended) — a shift of **7.4e-04**, which is the same number already
+  recorded as the largest shift in any deletion time, arrived at a second way.
+  That is the honest statement of what the regulariser does here.
 - **"The regulariser was rejected by `s3rad`."** Also no, and this is the
   subtler one: the stopping point was compared, but the stopping point is in
   the phantom regime. Compared where the specimen still exists — severance

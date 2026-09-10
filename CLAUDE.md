@@ -42,17 +42,18 @@ trustworthy.
 
 ## Before and after every change
 
-    CCX_EXE=/path/to/ccx_2.23_pardiso test/regress/run.py -j 2
+    CCX_EXE=/path/to/ccx_2.23_pardiso test/regress/run.py -j 4
 
-Nine cases, about three minutes, exit status is the number of failures. It is
-proven able to go red. Regenerate the switch registry with
-`tools/mkswitches.py` if you add or remove a `getenv`; the gate's preflight
-fails if it is stale.
+Eleven cases, under a minute on four cores, exit status is the number of
+failures. It is proven able to go red — reinjecting the dead-facet defect
+turns all eleven red and trips the `LOADPATH` self test. Regenerate the
+switch registry with `tools/mkswitches.py` if you add or remove a `getenv`;
+the gate's preflight fails if it is stale.
 
 Preserve, unless you have measured a reason not to and said so: feature-off
-behaviour, the three self tests (`DAMAGE TR`, `DAMSTATE`, `LSLADDER`), the
-analytical Mode-I and mixed-mode benchmarks, the constitutive law checks, and
-the old-wall line-search A/B.
+behaviour, the four self tests (`DAMAGE TR`, `DAMSTATE`, `LSLADDER`,
+`LOADPATH`), the analytical Mode-I and mixed-mode benchmarks, the
+constitutive law checks, and the old-wall line-search A/B.
 
 ## Delivery
 

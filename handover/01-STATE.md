@@ -11,8 +11,9 @@ without a source are not in this document.
 | `CCX_*` switches the binary reads | **139** |
 | of those, explained nowhere but the line that reads them | **63** |
 | of those, set by **no test in this tree** | **122** |
-| units already extracted with an owner and a self test | `src/lsladder.c`, `src/damstate.c`, `src/damswitch.c` |
+| units already extracted with an owner and a self test | `src/lsladder.c`, `src/damstate.c`, `src/damswitch.c`, `src/loadpath.c` |
 | units still inline in `nonlingeo.c` | erosion/topology, convergence judgement, the solve, every diagnostic |
+| the gate | **11 cases, 47 s**, proven able to go red |
 
 The switch counts are generated, not estimated: `tools/mkswitches.py` scans
 the sources, `docs/SWITCHES.md` is its output, and the coverage column comes
@@ -87,6 +88,39 @@ Measured with `test/s3rad/fragments.py`: at every facet-stiffness threshold,
 fixes reproducibility across instruction sets, not across thread counts. Two
 runs identical for 482 attempts diverged at 483 on a 6-against-5 iteration
 count; twenty increments later they were on different walls.
+
+**A specimen now says when it has stopped being one.** `src/loadpath.c` owns
+the judgement, asks it once per converged increment, derives the grips from
+the deck's own `*BOUNDARY` cards when nobody names them, and stops the run at
+severance. The three gaps it closed — a hand-named set pair, a second opt-in
+switch, and a call site inside the bulk-deletion transaction — are in
+`05-DEBT.md` §1 with the measurements.
+
+**The phantom regime was worse than "wasted increments".** On the fast plain
+deck the specimen separates at increment 65, `theta=0.1175`, and the run used
+to continue to 507. Over that stretch the grip reaction is a **straight line
+through the origin**, `Fx/theta` constant to **0.04%** across `theta`
+0.19…1.0: two detached halves joined by 36 failed facets at `gmin*Kn`. The
+reported load falls to 1.2% of peak at severance and climbs back to **6.5% of
+peak** by `theta=1`. The model did not merely keep going, it reported a
+recovering specimen.
+
+**The fast-wrapped wall is past severance.** That deck — the one the
+crack-face regulariser was built and validated against — severs at increment
+**96**, `theta = 0.1587578`; its wall is at increment 99, `theta = 0.158766`,
+**three increments later**. The wall is unchanged and kept as a regression
+(`fast-wrapped-wall`, byte-identical to the pre-change run), and the kink is
+still real and still measured on the law itself. But it is a convergence
+failure of a specimen that had already come apart, and the regularised arm's
+`theta=1` is **420 increments** of phantom. Measured where the specimen still
+exists, the two arms sever 7.4e-04 apart in `theta` — the same figure already
+on record as the largest shift in any deletion time.
+
+**Severance is not always a reason to stop.** `test/pathfollow/close.inp` is
+two blocks joined by two facets and nothing else; it drives them past `df` so
+`g -> gmin` and then closes them, because the compressive branch of a crack
+face is what it measures. A dead facet in compression is a real load path.
+This rejected the obvious design before it was written.
 
 ## What is believed but not established
 

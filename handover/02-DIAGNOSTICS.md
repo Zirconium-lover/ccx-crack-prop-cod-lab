@@ -108,7 +108,37 @@ hiding a real imbalance and must be revisited.**
 | residual flat while the correction shrinks | stalling: either a kink (§1) or an irreducible component |
 | residual halves when `dtime` halves | a **step-proportional** residual Newton cannot remove — cutting back will not help and may hurt |
 
-## 6. Connectivity — `test/s3rad/fragments.py <rundir>`
+## 6. Connectivity — now printed by the solver, `[LOADPATH]`
+
+**This is no longer a script somebody has to remember.** Every run with a
+damage material or a cohesive element prints, unprompted:
+
+```
+[LOADPATH] grip-to-grip connectivity is checked every converged increment;
+           endpoints derived from *BOUNDARY, direction 1: 49 reacting node(s)
+           against 49 driven.
+[LOADPATH CENSUS] inc=100 time=0.1817500 connected=1 reach=9954 live=42785
+                  facets=1055/5400 failed
+[LOADPATH SEVERED] inc=65 time=1.175e-01
+                   live elements 2106, cohesive facets 36 of which 36 fully failed
+[LOADPATH] SEVERED at increment 65, theta=0.1175000, and the run ended there.
+```
+
+The census line every 50 increments answers "is the specimen still one piece"
+and "how far through the interface is it" at a glance; `[LOADPATH SEVERED]`
+fires once, and the closing `[LOADPATH]` line is the run's verdict on itself,
+so a number quoted from a log is quoted next to its own status.
+
+An element conducts iff it is not deleted and it is not a cohesive facet whose
+every integration point has failed. On severance the run stops;
+`CCX_FRACTURE_PAST_SEVERANCE=1` continues and stamps every later increment
+`[LOADPATH PHANTOM]`.
+
+### The offline cross-check — `test/s3rad/fragments.py <rundir>`
+
+Still worth running for the questions the census does not answer: whether
+anything is **adrift** (a component reaching no grip), and how the picture
+changes as the facet-stiffness threshold is swept.
 
 Connected components of the live bulk, with a cohesive facet counted as a
 load path only above a given stiffness fraction. Answers two questions the
@@ -121,13 +151,14 @@ per-node diagonal cannot:
   falls apart. On `s3rad` it is two pieces, one at each grip, as soon as only
   facets above `g=0.5` count.
 
-## 7. Severance — bisect the deletion history
+## 7. Severance — the run says so itself
 
-For the physical question "when did it break", bisect `m.damage` in time
-order for loss of grip-to-grip connectivity through **live bulk only**. On
-`s3rad`: increment 753, `theta = 0.3411981`.
+Formerly: bisect `m.damage` in time order for loss of grip-to-grip
+connectivity. That is now unnecessary — §6 prints it, and by default the run
+does not go past it. Keep the bisection only to re-derive a number from an
+**old** run log that predates `loadpath.c`.
 
-**Run this before interpreting any late-run result.** A wall 178 increments
+**Still true, and the reason all of this exists:** A wall 178 increments
 after separation is a wall in a configuration that is not a specimen, and no
 amount of convergence work on it means anything.
 
@@ -176,6 +207,10 @@ identity being approximate.
   there is no clean check. A directional-derivative comparison would be one.
 - Nothing reports **why an attempt was abandoned** in a machine-readable
   form. `m.cvg` has to be read by eye.
-- The connectivity check (§6) is offline python. It should be a census the
-  solver prints, cheaply, every N increments — then §7 would be automatic and
-  the phantom-regime defect could not recur.
+- ~~The connectivity check (§6) is offline python.~~ **Done** — `loadpath.c`
+  prints it every increment and stops the run at severance. What is still
+  offline is the *adrift* question (a component reaching no grip), which the
+  grip-to-grip walk does not answer.
+- Nothing reports the load-path census in a **machine-readable** file the way
+  `m.damage` and `m.sta` are. It is log text; it should be a column in the
+  status file or a small `.loadpath` history.
