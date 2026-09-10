@@ -129,6 +129,17 @@ and "how far through the interface is it" at a glance; `[LOADPATH SEVERED]`
 fires once, and the closing `[LOADPATH]` line is the run's verdict on itself,
 so a number quoted from a log is quoted next to its own status.
 
+**The verdict prints however the run ends**, including at a wall. It is an
+`atexit` handler, because a run that walls leaves through `stop()` — that is
+`exit(201)` — and never reaches the bottom of `nonlingeo()`. The case that
+most needs the verdict was briefly the one case that did not print it:
+`fast-wrapped-wall` reported "never severed" while its own log carried
+`[LOADPATH SEVERED] inc=96`.
+
+The gate pins the verdict (`severed_inc`, `severed_theta`) on every case. On
+a case that deliberately runs past severance that is the *only* check on
+where severance was, since the stopping increment no longer says.
+
 An element conducts iff it is not deleted and it is not a cohesive facet whose
 every integration point has failed. On severance the run stops;
 `CCX_FRACTURE_PAST_SEVERANCE=1` continues and stamps every later increment
@@ -212,5 +223,7 @@ identity being approximate.
   offline is the *adrift* question (a component reaching no grip), which the
   grip-to-grip walk does not answer.
 - Nothing reports the load-path census in a **machine-readable** file the way
-  `m.damage` and `m.sta` are. It is log text; it should be a column in the
-  status file or a small `.loadpath` history.
+  `m.damage` and `m.sta` are. It is log text — the gate scrapes it, which
+  works but is a parser against prose. A small `.loadpath` history, one line
+  per census, would let two arms be compared on connectivity the way they are
+  already compared on deletion sets.

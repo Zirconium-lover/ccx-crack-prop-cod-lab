@@ -55,6 +55,21 @@ def census(log):
         if worst is None or v<worst: worst=v
     return mx,worst
 
+def severance(log):
+    """The run's OWN verdict on whether it was still a specimen.
+
+    Pinning this matters because the stopping increment only pins severance
+    on a case that stops there.  fast-wrapped-wall deliberately runs past it,
+    so without this its severance point - the whole reason that case is
+    labelled honestly - would be unchecked.  Returns 0 for a run that kept a
+    load path throughout, None if it made no statement at all."""
+    try: txt=open(log,errors='replace').read()
+    except OSError: return None,None
+    m=re.search(r'^\[LOADPATH\] SEVERED at increment (\d+), theta=([0-9.]+)',txt,re.M)
+    if m: return int(m.group(1)),m.group(2)
+    if re.search(r'^\[LOADPATH\] the specimen kept',txt,re.M): return 0,None
+    return None,None
+
 def selftests(log,required,lines):
     """every named self test must report PASSED, no unit may report a failure
     or an error, and every required line must be present - a report that
@@ -109,6 +124,8 @@ def one(case,outroot,exe,required,lines):
     exp=case['expect']
     if 'masked_max' in exp or 'worst_ratio' in exp:
         got['masked_max'],got['worst_ratio']=census(log)
+    if 'severed_inc' in exp or 'severed_theta' in exp:
+        got['severed_inc'],got['severed_theta']=severance(log)
     if 'check_close' in exp:
         r=sh('python3 %s/test/pathfollow/check_close.py %s --zeta %s'
              %(ROOT,rundir,case.get('zeta','0')),base_env([]))

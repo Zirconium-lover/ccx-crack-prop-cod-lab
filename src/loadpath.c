@@ -315,6 +315,33 @@ void loadpath_note(loadpath *lp,ITG inc,double t)
   }
 }
 
+/* Print the verdict however the run ends.
+
+   A run that dies at a wall leaves through FORTRAN stop(), which is
+   exit(201), and never reaches the bottom of nonlingeo() - so the case that
+   most needs the verdict was the one case that did not print it.  Measured:
+   fast-wrapped-wall reports "never severed" from its summary while its own
+   log carries [LOADPATH SEVERED] inc=96.
+
+   atexit covers every exit path, including the ones not enumerated here. */
+static loadpath *lp_exit_target=NULL;
+static ITG lp_exit_done=0;
+
+static void loadpath_atexit(void)
+{
+  if((lp_exit_target!=NULL)&&(lp_exit_done==0)){
+    lp_exit_done=1;
+    loadpath_summary(lp_exit_target);
+    fflush(stdout);
+  }
+}
+
+void loadpath_report_at_exit(loadpath *lp)
+{
+  if(lp_exit_target==NULL) atexit(loadpath_atexit);
+  lp_exit_target=lp;
+}
+
 /* The one-line verdict for the end of a run. */
 void loadpath_summary(const loadpath *lp)
 {

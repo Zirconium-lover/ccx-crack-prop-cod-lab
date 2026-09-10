@@ -4988,6 +4988,7 @@ ITG  loadpath_census(loadpath *lp,ITG *ipkon,ITG *kon,char *lakon,ITG *ne,
 ITG  loadpath_latch(loadpath *lp,ITG inc,double t);
 void loadpath_note(loadpath *lp,ITG inc,double t);
 void loadpath_summary(const loadpath *lp);
+void loadpath_report_at_exit(loadpath *lp);
 ITG  loadpath_severed(const loadpath *lp);
 ITG  loadpath_selftest(void);
 

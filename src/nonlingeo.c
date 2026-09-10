@@ -2985,6 +2985,8 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
                                      nodeboun,ndirboun,xboun,*nboun,
                                      damage_fracture_link);
         if(damage_lp_ready){
+          /* the verdict must survive a run that dies at a wall */
+          loadpath_report_at_exit(&damage_lp);
           printf("[LOADPATH] grip-to-grip connectivity is checked every "
                  "converged increment; endpoints %s.  A cohesive facet "
                  "whose every integration point has failed does not count "
@@ -16126,16 +16128,6 @@ damage_controller_done:
 
   SFREE(iponoel);
   
-  /* [LOADPATH] the step's verdict on itself.  Outside every damage gate
-     on purpose: a deck with no bulk damage material still has to say
-     whether the thing it solved was still in one piece.  A result quoted
-     from this job is now quoted next to a line that says so. */
-  if(damage_lp_ready){
-    loadpath_summary(&damage_lp);
-    loadpath_free(&damage_lp);
-    damage_lp_ready=0;
-  }
-  fflush(stdout);
 
   return;
 }
