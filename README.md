@@ -57,7 +57,10 @@ the first without one at 753.  Stock died at increment 554, `theta=0.2555742`
 whatever it was given.  What still joins the halves afterwards is 430
 cohesive facets, and they cannot let go because `cohesive_uc6.f` pins
 `g = max(gmin, 1-D)` at `gmin=1.e-5` while terminal deletion scans `C3D4`
-only; `CCX_FRACTURE_DEADFACET=1` is the switch that lets the run say so.
+only.  `CCX_FRACTURE_DEADFACET` was the switch that let the run say so; it
+is retired.  `src/loadpath.c` now asks the question every converged increment
+without being asked to, and stops the run at severance -- see
+`handover/05-DEBT.md` item 1.
 
 **The second wall is passed.**  `CCX_DAMAGE_AUTOSPC_FORCE=1`, one flag, with
 the deck, `DEADALL=1.e-2`, viscosity, tangent, AUTOSPC threshold, convergence

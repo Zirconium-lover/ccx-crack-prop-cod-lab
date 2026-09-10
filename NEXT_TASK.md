@@ -7,7 +7,7 @@ should work:
 
 | | |
 |---|---|
-| `test/regress/run.py` | **6 cases, ~3 minutes.** Run it before and after every change. It is proven able to go red. |
+| `test/regress/run.py` | **11 cases, 47 s on four cores.** Run it before and after every change. It is proven able to go red. |
 | `test/fast/run_fast.sh` | a 2160-element specimen that reaches a node with **no bulk support left**, in 24 s |
 | `[SWITCHES]` at the top of every `run.log` | states the run's own configuration and names any `CCX_*` set that the binary does not read |
 
@@ -59,8 +59,11 @@ severance result again, by connectivity instead of reaction force.
 **The metal severs at `theta=0.3411981`**, and the run continues past it
 because `cohesive_uc6.f` pins `g` at `gmin` while terminal deletion scans
 `C3D4` only, so a dead facet reads as a load path for ever.
-`CCX_FRACTURE_DEADFACET=1` sees it; the fast plain deck demonstrates the same
-blindness in 58 s.
+That is FIXED: `src/loadpath.c` owns the judgement, asks it every converged
+increment, and stops the run at severance.  `CCX_FRACTURE_DEADFACET` is
+retired -- it made the judgement opt-in, and the one runner that armed the
+connectivity test explicitly unset it.  The fast plain deck demonstrated the
+same blindness in 46 s and now stops at increment 65 instead of 507.
 
 **Runs are not reproducible across thread counts.** `MKL_CBWR=COMPATIBLE`
 fixes reproducibility across instruction sets, not across thread counts. Two
@@ -104,8 +107,8 @@ count. Fix `OMP_NUM_THREADS` and `MKL_NUM_THREADS` on both arms of any A/B.
   occur here, so build it against a measured failure, not against the name.
 - **94 of 139 switches** have no prose anywhere but the line that reads them
   (`docs/SWITCHES.md`, generated). Retire or document.
-- **`src/ccx_2.22`** is a 6.5 MB executable tracked in git, inherited from the
-  original-sources import.
+- ~~**`src/ccx_2.22`** is a 6.5 MB executable tracked in git.~~ Removed from
+  HEAD; it stays in history.
 
 ## Validation and success
 

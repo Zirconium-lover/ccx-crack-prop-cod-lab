@@ -68,6 +68,10 @@ export CCX_PARDISO_REUSE_SYMBOLIC=1
 unset CCX_DISSIPATION_CONTROL
 unset CCX_DISSIPATION_TARGET
 unset CCX_FRACTURE_LINK
+# CCX_FRACTURE_DEADFACET is retired.  Unsetting it here is what kept this
+# runner - the only one that armed the connectivity test - from ever seeing
+# the specimen come apart, so it is worth saying plainly rather than deleting
+# the line silently: src/loadpath.c now applies the judgement unconditionally.
 unset CCX_FRACTURE_DEADFACET
 
 for kv in "$@"; do

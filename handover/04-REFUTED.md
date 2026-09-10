@@ -53,8 +53,9 @@ same form: what was tried, and the measurement that killed it.
   8) and conflating them wasted a run.
 - **"The census shows N transitions relative to the base state."** No — it is
   referenced to the FULL step. Misreading the direction inverted a conclusion.
-- **"DEADFACET changed the trajectory."** No — its code is read-only.
-  Discriminating properly showed **thread count** was the cause.
+- **"DEADFACET changed the trajectory."** No — its code was read-only.
+  Discriminating properly showed **thread count** was the cause. (The switch
+  itself is now retired: `loadpath.c` applies the judgement unconditionally.)
 - **"The fast deck validated the refactor."** No — it never masked a single
   node, so the decision branch was never exercised. The threshold is clamped
   at `1.e-1` in the source and that deck's worst node reaches `1.0406e-01`,

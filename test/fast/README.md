@@ -61,14 +61,23 @@ under a minute.  That makes it usable as a characterization baseline: any
 refactor must reproduce these numbers exactly before it is allowed near
 `s3rad`.
 
-## The plain variant also demonstrates the severance blindness, in 58 seconds
+## The plain variant demonstrated the severance blindness, and no longer has it
 
-With `CCX_FRACTURE_DEADFACET=1` the same deck stops itself:
+This deck used to run to increment 507, `theta=1`, having come apart at
+increment 65.  It now stops itself, with no switch to remember:
 
 ```
-[FRACTURE COMPLETE] inc=65 step_time=1.175000000000e-01
-                    no surviving load path between FACE_X0_NSET and FACE_XL_NSET
+[LOADPATH SEVERED] inc=65 time=1.175000000000e-01
+                   no surviving load path between the grips
+                   endpoints: derived from *BOUNDARY, direction 1: 49 reacting
+                   node(s) against 49 driven
+                   live elements 2106, cohesive facets 36 of which 36 fully failed
 ```
+
+All 90 deletions are complete by increment 65, and every status line up to it
+is byte-identical to the old run.  `CCX_FRACTURE_DEADFACET`, which used to be
+what let the run say so, is retired; `CCX_FRACTURE_PAST_SEVERANCE=1`
+reproduces the old walk to `theta=1` if you want it.
 
 Without it, the identical deck walks on to `theta=1.0` at increment 507 -
 **442 increments after the specimen has actually separated**.  That is the

@@ -75,8 +75,8 @@ reason anything here is trustworthy:
   0.1%. If a specimen already broke 178 increments before the run stopped,
   say that, and say what the run after that point is worth.
 
-Run `test/regress/run.py` before and after every change. It is nine cases,
-about three minutes, and it is proven able to go red.
+Run `test/regress/run.py` before and after every change. It is eleven cases,
+under a minute on four cores, and it is proven able to go red.
 
 ## The state of the target problem, stated exactly
 

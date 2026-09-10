@@ -1436,13 +1436,15 @@ with a measurement on DHC1: the specimen carried 0.0% of peak with 206 of 416
 facets fully failed, and an offline replay put severance at `t=0.6100` while
 the run was driven on to `0.7124`.
 
-`CCX_FRACTURE_DEADFACET=1` excludes a facet whose every integration point has
-failed from the TERMINATION connectivity - it deletes nothing and changes no
-equation, only the moment the run may stop.  **It is OFF by default and was
-not set in any run in this file** (checked: no `[FRACTURE TERMINATION] a
+`CCX_FRACTURE_DEADFACET` excluded a facet whose every integration point had
+failed from the TERMINATION connectivity.  **It is RETIRED** - `src/loadpath.c`
+now applies that judgement unconditionally, every converged increment, and
+stops the run at severance.  The paragraph below is the historical reason the
+runs in this file could not see severance: the switch was OFF by default and
+was not set in any run here (checked: no `[FRACTURE TERMINATION] a
 cohesive facet` banner and no `[FRACTURE COMPLETE]` in either the stock or
-the fixed run).  Any statement about whether this specimen separates has to
-be made with that switch armed.
+the fixed run).  That is no longer a condition anyone has to remember: every
+run states whether the specimen is still in one piece, on its own.
 
 ## The open question that is still open
 
