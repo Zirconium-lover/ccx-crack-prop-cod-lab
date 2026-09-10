@@ -176,6 +176,38 @@ per-node diagonal cannot:
   falls apart. On `s3rad` it is two pieces, one at each grip, as soon as only
   facets above `g=0.5` count.
 
+## 6a. The grip reaction — on the census line, every accepted increment
+
+**The one quantity that can arbitrate the connectivity judgement**, because
+the census does not compute it. Three versions of that judgement were each
+internally consistent, and only this told them apart.
+
+```
+[LOADPATH CENSUS] inc=550 ... connected=1 ... grip|R|=6.1222e+01 (4.78% of peak)
+```
+
+Read it against the connectivity on the same line:
+
+| `connected` | reaction | what it is |
+|---|---|---|
+| 1 | a real fraction of peak | a specimen |
+| 1 | **below ~1% of peak** | the judgement is wrong, or the run is phantom |
+| 0 | anything | severed; the reaction only says how long ago |
+
+Two things about how it is taken, both learned the hard way:
+
+- it is summed on the **main Newton path**, where `results()` has just filled
+  `fn`. `nonlingeo.c` already carried the scar — "after `SFREE(fn)` the sum
+  was exactly zero, and at the output calls it was stale";
+- the **peak** is taken once per ACCEPTED increment. Per iteration makes an
+  early iterate the peak; per census call lets a rejected cutback attempt set
+  it, because the increment loop re-enters on every cutback. Both were caught
+  by `fast-plain` reporting its own peak load as "4.78% of peak".
+
+Prefer it to `total force` in `.dat`, which prints only where `*NODE PRINT`
+fires — twice in the whole `fast-plain` run, understating its peak by 21x and
+so overstating the phantom ratio by the same factor.
+
 ## 7. Severance — the run says so itself
 
 Formerly: bisect `m.damage` in time order for loss of grip-to-grip
@@ -208,7 +240,7 @@ read. A misspelt switch produces an A/B that is not wrong but
 **uninformative**, and that is the expensive kind — it costs a whole run to
 notice. Check this block before believing any comparison.
 
-## 10. The self tests — `DAMAGE TR`, `DAMSTATE`, `LSLADDER`
+## 10. The self tests — `DAMAGE TR`, `DAMSTATE`, `LSLADDER`, `LOADPATH`, `CONVSTATE`
 
 Run on every job that arms the relevant mechanism, and the mechanism
 **refuses to arm** if its test fails. Prefer this to a test that runs
