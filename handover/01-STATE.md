@@ -127,6 +127,15 @@ failure of a specimen that had already come apart, and the regularised arm's
 exists, the two arms sever 7.4e-04 apart in `theta` — the same figure already
 on record as the largest shift in any deletion time.
 
+**The census fires exactly when it should, checked against the deck's own
+state output.** On `mixed.inp` — 120 bulk elements in two halves joined by two
+UC6 facets and nothing else — the `.dat` internal-state block shows all six
+integration points carrying the failure flag `0.0` at increment 2499
+(`theta=0.4998`) and `1.0` at increment 2500 (`theta=0.5000`). The census
+reports severance at increment 2500. No off-by-one, no premature firing, and
+the check is against `*EL PRINT` output rather than against the same code
+path that makes the judgement.
+
 **The second `s3rad` wall is NOT past severance — the third one is.** The
 census now separates the two classes at full scale. Stock `run_s3rad.sh`
 configuration, 4 threads, PARDISO, HEAD binary: the run reaches the recorded
