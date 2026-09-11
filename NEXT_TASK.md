@@ -7,7 +7,7 @@ should work:
 
 | | |
 |---|---|
-| `test/regress/run.py` | **11 cases, 47 s on four cores.** Run it before and after every change. It is proven able to go red. |
+| `test/regress/run.py` | **9 cases, under a minute on four cores.** Run it before and after every change. It is proven able to go red three ways. |
 | `test/fast/run_fast.sh` | a 2160-element specimen that reaches a node with **no bulk support left**, in 24 s |
 | `[SWITCHES]` at the top of every `run.log` | states the run's own configuration and names any `CCX_*` set that the binary does not read |
 
@@ -154,15 +154,17 @@ in — the obligations in `06-TARGET.md` apply: name the failure it addresses
 and the gate case that would go red without it. Note also that the peak of the
 JUDGED residual at that stall sits on a HEALTHY node (2.3e-05) at 22.7x
 tolerance, which by §2 is a kink signature — so the stall may have two causes
-and the ownerless judgement is only one of them. The prediction is that it is of order
-one, and that is what would make the criterion dimensionally sound and free of
-any tuned threshold. It has NOT been taken — the `s3rad` runs in this session
-used a binary built before `convstate.c` existed, so their logs carry no
-`[CONVSTATE]` line. Taking it costs one run to `theta=0.2556` at TWO threads
-(at four the run stalls at increment 604 and never reaches the wall).
+and the ownerless judgement is only one of them.
 
-Only after that number exists should the criterion itself change, and the
-change should go through `convstate.c` rather than through another norm-level
+**Read the two nodes as two different patologies, because they are.** Node
+1246 has a COLLAPSED diagonal (`k`=1.06 against a healthy 6996) and a large
+`need_du`; that is "no load path", and `AUTOSPC`/`loadpath.c` already own it.
+Node 8305 has a HEALTHY diagonal and a tiny `need_du` at 22.7x tolerance; that
+is the kink. So `need_du/grip` separates the FIRST class — not the one
+`03-TEST-LADDER.md` names as the missing rung, which is defined by a healthy
+diagonal. Do not conflate them; an earlier version of this file did.
+
+The criterion should change through `convstate.c` rather than through another norm-level
 mask like `CCX_DAMAGE_AUTOSPC_FORCE` - which answers the same question with a
 stiffness ratio, is a fiction by `02-DIAGNOSTICS.md` 4's own criterion at the
 stall, and is not robust across thread counts.

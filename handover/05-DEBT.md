@@ -65,8 +65,10 @@ Proof obligations, all met and all measured rather than assumed:
 - every truncated case is **byte-identical up to severance**, and every
   deletion history is byte-identical in full. What was removed is the phantom
   tail and nothing else;
-- the gate goes **red** when the defect is reinjected — all 11 cases, and the
+- the gate goes **red** when the defect is reinjected — all 9 cases, and the
   self test trips too, so the module refuses to arm rather than misjudging.
+  Two further red proofs exist since: ignoring compression (9/9) and ignoring
+  load DIRECTION (3/3 on the wrapped cases).
 
 ### The one that must not be generalised
 
@@ -121,8 +123,9 @@ and did nothing.
 `nonlingeo()` carries the solve, the convergence judgement, the erosion and
 topology bookkeeping, the load-path judgement, and every diagnostic, with the
 diagnostics interleaved among the physics. Three units have been extracted
-(`lsladder.c`, `damstate.c`, `damswitch.c`) and the pattern is proven: one
-owner, a self test, and the mechanism refuses to arm if its test fails.
+(`lsladder.c`, `damstate.c`, `loadpath.c`, `convstate.c`; `damswitch.c` is the
+switch registry, not a judgement) and the pattern is proven: one owner, a self
+test, and the mechanism refuses to arm if its test fails.
 
 The obvious remaining units: erosion/topology, the convergence judgement, the
 solve, the diagnostics.

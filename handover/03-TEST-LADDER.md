@@ -96,23 +96,34 @@ nothing wrong.
 `need_du` and `need_du/grip` at the peak residual of every iteration, so the
 distance between the two wall classes can be read off a 24-second run:
 
-| deck, at its wall | node | `need_du` | grip | `need_du/grip` |
+| deck, at its wall | node | `k` | `need_du/grip` | which class |
 |---|---|---|---|---|
-| `fast-wrapped`, increment 99 | 440 | 5.98e-04 | 0.1588 | **3.8e-03** |
-| **`s3rad` at the stall, node 1246** | — | 4.24e-02 | 0.2550 | **1.7e-01** |
+| `fast-wrapped`, increment 99 | 440 | 1.63e+01 | 3.8e-03 | neither, cleanly |
+| `s3rad` stall, increment 604 | **1246** | **1.06e+00** | **1.7e-01** | no load path |
+| `s3rad` stall, increment 604 | **8305** | **7.00e+03** | **2.3e-05** | **THIS one** |
 
-The bottom row is the class, measured rather than described: a candidate rung
-has to reach `need_du/grip` of order 1e-1, and `fast-wrapped` misses it by
-44x. A healthy node on the same `s3rad` iteration sits at 2.3e-05, so the
-target is not merely "large" — it is 7100x the healthy value on the same
-increment.
+**Read the `k` column before the ratio, because the two `s3rad` rows are two
+different patologies and an earlier version of this file conflated them.**
 
-So `fast-wrapped` misses the class by more than two decades, measured rather
-than argued. Any candidate rung can now be judged in seconds against the one
-number that defines the class, instead of by running it and seeing whether it
-"feels like" the `s3rad` wall — which is how the four rejected decks in
-`04-REFUTED.md` were judged. On `s3rad` that is a node at the crack front that has lost 20
-of its 24 elements but keeps four.
+- Node **1246** has a diagonal that has COLLAPSED — 1.06 against a healthy
+  6996 — so its large `need_du` follows from a small `k`. That is "this node
+  has no load path", and `AUTOSPC` and `loadpath.c` already own it. It is
+  **not** the missing rung, because the diagonal test sees it perfectly well.
+- Node **8305** is the one this section is about: diagonal **healthy**, and
+  its residual nevertheless sits at **22.7x tolerance** and will not come
+  down. `need_du/grip` is 2.3e-05 — *small*, because `k` is large. By
+  `02-DIAGNOSTICS.md` §2 that reading is a **kink**.
+
+So `need_du/grip` is a good detector of the first class and says almost
+nothing about the second. A candidate rung for THIS class has to reproduce:
+a healthy diagonal, a residual stuck at tens of times tolerance, and a
+`need_du/grip` that stays small while it happens. The screening number is
+therefore not "`need_du/grip` of order 1e-1" — it is the pair
+(`k` healthy, `|R|/tol` ≫ 1), with the eps ladder of §1 as the confirming
+reading.
+
+`fast-wrapped` reaches neither: its residual misses tolerance by 520x, which
+is a different failure again.
 
 Building this rung is the highest-value test work available. It would make
 the one remaining wall class diagnosable in seconds instead of hours, and it
