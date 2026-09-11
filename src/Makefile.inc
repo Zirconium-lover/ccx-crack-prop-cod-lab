@@ -1115,6 +1115,7 @@ lsladder.c \
 damstate.c \
 loadpath.c \
 convstate.c \
+stallstate.c \
 damswitch.c \
 pardiso_cp.c \
 pastix.c \

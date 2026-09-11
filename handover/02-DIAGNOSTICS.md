@@ -50,6 +50,40 @@ Also printed at each armed iteration: where the residual, the Newton step and
 the linear-model defect *live*, split by whether a node touches a live UC6
 facet, softening bulk or plastified bulk. Useful for ruling out a region.
 
+## 1a. The diagnostics arm themselves — `[STALLSTATE]`
+
+**§1 used to have an expensive precondition**: it is armed by
+`CCX_DAMAGE_WALL_THETA`, which needs the wall's load factor *in advance*. The
+first time a deck walls nobody has it, so the first run is spent finding out
+where to look and the diagnosis costs a second one. Measured price of exactly
+that: two `s3rad` runs of ~50 min each, in one session, for a single number.
+
+A run now notices it has stopped progressing and arms §1 on the spot:
+
+```
+[STALLSTATE] STALLED at inc=97 theta=0.1587617: dtheta has been below 0.02 of
+             this deck's own median pace for 3 consecutive accepted increments
+             arming the wall diagnostics here, without having been told it
+[WALLDIAG] GATE OPEN at inc=98
+```
+
+The quantity is dimensionless — `dtheta` against the median of the deck's own
+last 20 accepted steps — so it needs no per-deck tuning. Measured separation:
+
+| deck | healthy | at the wall | false alarms |
+|---|---|---|---|
+| `fast-wrapped` | ~1 | 1.9e-03 | 0 |
+| `s3rad` | ~1 | 5.9e-03 | 1, isolated, at inc 187 |
+| `fast-plain` (does not wall) | ~1 | never fires | 0 |
+
+The threshold sits in the middle of three empty decades, so it is not carrying
+the judgement — the gap is. Hysteresis (3 consecutive) removes the isolated
+`s3rad` false alarm; every real wall produces a run of them.
+
+It arms diagnostics and nothing else: all nine gate trajectories are
+**byte-identical** with it on, and it fires on exactly one of the nine — the
+one deck that walls.
+
 ## 2. Residual peak attribution — `Rpeak`, same switch
 
 Per node at the residual peak: `R`, `addiag`, `addiag0`, their `ratio`,

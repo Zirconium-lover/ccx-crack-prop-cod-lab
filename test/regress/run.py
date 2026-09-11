@@ -95,7 +95,10 @@ def selftests(log,required,lines):
     for name in required:
         if not re.search(re.escape(name)+r'.*(PASSED|0 failure)',txt):
             if name in txt: bad.append("%s did not report PASSED"%name)
-    for m in re.finditer(r'\[([A-Z0-9 _]+)\][^\n]*?([1-9]\d*) failure',txt):
+    # The digit must not be part of a word: "UC6 failure" in the eps-ladder
+    # line otherwise reads as "6 failure" and fails every case whose probes
+    # are armed.  Latent until the diagnostics started arming themselves.
+    for m in re.finditer(r'\[([A-Z0-9 _]+)\][^\n]*?(?:^|[^A-Za-z0-9])([1-9]\d*) failure',txt):
         bad.append("%s reported %s failure(s)"%(m.group(1),m.group(2)))
     for m in re.finditer(r'\[([A-Z0-9 _]+)\][^\n]*?\*ERROR([^\n]*)',txt):
         bad.append("%s reported an error:%s"%(m.group(1),m.group(2)[:80]))

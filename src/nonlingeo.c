@@ -134,6 +134,9 @@ ITG damage_spc_count=0;
 /* [DAMSTATE] the single owner of the load-path judgement; the three
    globals above are views onto it once it has been updated. */
 damstate damage_dstate={0,NULL,NULL,NULL,NULL,0,0.,0};
+/* [STALLSTATE] the run's own opinion of whether it is still progressing */
+static stallstate damage_stall;
+static ITG damage_stall_ok=0;
 
 /* [LOADPATH] the single owner of the judgement one level up: whether a
    load path still links the grips at all, i.e. whether what is being
@@ -2969,6 +2972,22 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
         damage_lp_armed_once=1;
         damage_lp_testok=(loadpath_selftest()==0);
         convstate_selftest();
+        /* [STALLSTATE] arm the self-arming diagnostics.  Refuses on a failed
+           self test, like every other judgement here. */
+        stallstate_init(&damage_stall);
+        damage_stall_ok=(stallstate_selftest()==0);
+        if(!damage_stall_ok){
+          printf("[STALLSTATE] *ERROR: self test failed; the diagnostics will "
+                 "NOT arm themselves and CCX_DAMAGE_WALL_THETA stays the only "
+                 "way in.%s","\n");
+        }else{
+          printf("[STALLSTATE] armed: if dtheta falls below %.3g of the median "
+                 "of this deck's own last %d accepted steps for %" ITGFORMAT
+                 " consecutive increments, the wall diagnostics arm "
+                 "themselves - no load factor has to be known in advance.%s",
+                 damage_stall.ratio,STALL_RING,damage_stall.nconfirm,"\n");
+        }
+        fflush(stdout);
       }else{
         loadpath_free(&damage_lp);
       }
@@ -5190,6 +5209,45 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
         (damage_fracture_complete==0)){
       
     if((icutb==0)&&(idamagereeq==0)){
+
+      /* ---- [STALLSTATE] one pass per accepted increment -------------
+         Ask whether the run is still making progress, and if it has stopped,
+         arm the wall diagnostics by setting the load factor they were
+         waiting to be told.  Re-using damage_wall_theta rather than adding a
+         second arming path means the probes, their ordering and the reason
+         the gate is on theta instead of an increment index all stay exactly
+         as they were - the only thing that changes is who supplies the
+         number.  Diagnostics only: nothing here is on a solution path. */
+      if(damage_stall_ok&&(iinc>0)){
+        ITG sv=stallstate_judge(&damage_stall,dtheta);
+        if(sv==3){
+          printf("[STALLSTATE] inc=%" ITGFORMAT " theta=%.7f dtheta is %.3e of "
+                 "this deck's median pace, %" ITGFORMAT " of %" ITGFORMAT
+                 " consecutive; not a stall until confirmed\n",
+                 iinc,theta,stallstate_ratio(&damage_stall,dtheta),
+                 damage_stall.ndisc,damage_stall.nconfirm);
+          fflush(stdout);
+        }else if(sv==1){
+          printf("\n[STALLSTATE] STALLED at inc=%" ITGFORMAT " theta=%.7f: "
+                 "dtheta has been below %.3g of this deck's own median pace "
+                 "for %" ITGFORMAT " consecutive accepted increments "
+                 "(ratio %.3e).\n",
+                 iinc,theta,damage_stall.ratio,damage_stall.nconfirm,
+                 damage_stall.rseen);
+          if(damage_wall_theta<0.){
+            damage_wall_theta=theta;
+            printf("                   arming the wall diagnostics here, at "
+                   "theta=%.9e, without having been told it in advance.\n",
+                   damage_wall_theta);
+          }else{
+            printf("                   the wall diagnostics were already "
+                   "armed at theta=%.9e.\n",damage_wall_theta);
+          }
+          printf("\n");
+          fflush(stdout);
+        }
+        stallstate_note(&damage_stall,dtheta);
+      }
 
       /* ---- [DAMAGE CORR] one pass per converged increment ---------- */
       if(damage_corr_mode==1){

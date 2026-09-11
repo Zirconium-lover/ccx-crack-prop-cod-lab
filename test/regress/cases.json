@@ -197,7 +197,8 @@
     "DAMSTATE",
     "LSLADDER",
     "LOADPATH",
-    "CONVSTATE"
+    "CONVSTATE",
+    "STALLSTATE"
   ],
   "required_lines": [
     "[SWITCHES] this binary reads",

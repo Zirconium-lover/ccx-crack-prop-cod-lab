@@ -5018,6 +5018,31 @@ void convstate_report(ITG inc,ITG node,double r,double k,double grip,
                       double tol);
 ITG  convstate_selftest(void);
 
+/* ---- THE judgement that the run has stalled (stallstate.c) -----------
+   Dimensionless: dtheta against the median of the deck's own recent
+   accepted steps.  Measured separation is two to three decades, and
+   hysteresis removes the one isolated false alarm.  It exists so the
+   diagnostics in 02-DIAGNOSTICS.md can arm WITHOUT being told the wall's
+   load factor in advance - which is what made the first run of any new
+   wall a wasted one.  */
+#define STALL_RING 20
+typedef struct{
+  double ring[STALL_RING];
+  ITG i,n;
+  double ratio;     /* threshold, placed in three decades of empty space */
+  ITG nconfirm;     /* consecutive accepted increments before it latches */
+  ITG ndisc,seen,nsince;
+  double first,rseen;
+}stallstate;
+
+void stallstate_init(stallstate *s);
+void stallstate_note(stallstate *s,double dtheta);
+double stallstate_reference(const stallstate *s);
+double stallstate_ratio(const stallstate *s,double dtheta);
+ITG  stallstate_judge(stallstate *s,double dtheta);
+ITG  stallstate_stalled(const stallstate *s);
+ITG  stallstate_selftest(void);
+
 /* ---- the backtracking ladder of the damage line search (lsladder.c) --
    Extracted from the Newton loop because it was wrong and the way it was
    wrong is worth a regression test.  See the block comment there. */
