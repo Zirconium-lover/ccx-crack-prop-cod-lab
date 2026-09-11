@@ -19,7 +19,13 @@ DOC=os.path.join(ROOT,'docs','SWITCHES.md')
 COV=os.path.join(ROOT,'test','regress','covered.txt')
 GETENV=re.compile(r'getenv\s*\(\s*[\'"](CCX_[A-Z0-9_]+)[\'"]')
 
-BANNER=re.compile(r'printf\s*\(\s*"((?:[^"\\\\]|\\\\.)*)"((?:\s*"(?:[^"\\\\]|\\\\.)*")*)')
+# NOTE the escaping.  This used to read [^"\\\\] and \\\\. , which in a raw
+# string is FOUR backslashes: the regex then demanded two literal backslashes
+# where C source has one.  Every printf containing a \n - which is very nearly
+# all of them - failed to match, so the switch was reported as explaining
+# nothing about itself.  That is where most of "63 switches explained nowhere
+# but the line that reads them" came from.
+BANNER=re.compile(r'printf\s*\(\s*"((?:[^"\\]|\\.)*)"((?:\s*"(?:[^"\\]|\\.)*")*)')
 
 def banner(txt,pos):
     """The banner this switch prints, taken verbatim from the source.

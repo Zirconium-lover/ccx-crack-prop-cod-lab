@@ -206,6 +206,26 @@ measured a wall attributable to either — **do not regularise them on faith**.
   needs a rewrite nobody should do to a shared branch.
 - Diagnostic probes are compiled into the solve path and gated by
   environment variables rather than isolated behind one interface.
-- `CCX_DAMAGE_AUTOSPC` is silently clamped at `1.e-1`. Legitimate as a safety
-  rail, invisible as a behaviour — a deck whose worst node sits at `1.04e-01`
-  masks nobody and gives no indication why.
+- ~~`CCX_DAMAGE_AUTOSPC` is silently clamped at `1.e-1`.~~ **Done.** The clamp
+  stays — it is a safety rail — but it now says so, and says what it means:
+  a deck whose worst diagonal ratio stays above it cannot exercise the
+  predicate at any legal setting.
+- ~~Three switches call themselves DIAGNOSTIC and change the answer.~~
+  **Done.** `CCX_DAMAGE_QAM_FLOOR`, `CCX_DAMAGE_REEQ_FLOOR` and
+  `CCX_DAMAGE_FD_SKIP` now open with "CHANGES THE ANSWER (not a diagnostic,
+  despite the name)". This had to happen BEFORE any consolidation of the 38
+  genuinely diagnostic switches, or it would have swept three answer-changing
+  knobs into the safe bucket.
+- ~~`CCX_DAMAGE_TANGENT_FULL` sets a C flag nothing reads.~~ **Done.**
+  `damage_unsym_tanfull` was written in one place and read nowhere in `src/`;
+  `resultsmech.f` reads the environment variable itself. The banner stays —
+  it is the only safe place to print from — but the variable that looked like
+  a control and was none is gone.
+- **A bug in `tools/mkswitches.py` was understating how documented the tree
+  is.** `BANNER` was written `[^"\\]` / `\\.` — four backslashes in a raw
+  string — so the regex demanded TWO literal backslashes where C source has
+  one. Every `printf` containing a `\n` failed to match, and the switch was
+  reported as saying nothing about itself. Fixed; five switches recovered
+  their description immediately, `CCX_DAMAGE_QAM_FLOOR` among them. **The
+  "63 explained nowhere" figure was measured with this bug in place** and
+  should be re-derived before the retirement campaign leans on it.

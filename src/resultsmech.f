@@ -166,7 +166,10 @@
         allocate(xstatesav(nstate_))
       endif
 !
-!     CCX_DAMAGE_FD_SKIP=1 - DIAGNOSTIC ONLY.  Skips the forward-difference
+!     CCX_DAMAGE_FD_SKIP=1 - CHANGES THE OPERATOR, despite reading as a
+!     diagnostic below.  With it on the tangent is the SECANT one, so it is
+!     not safe to sweep into a "diagnostics only" bucket.  Skips the
+!     forward-difference
 !     construction of dD/d(eps), leaving damageq at zero.  The rank-1 term
 !     then vanishes, which is the same matrix CCX_DAMAGE_UNSYM_SCALE=0
 !     produces - so running the two together gives an IDENTICAL Newton path

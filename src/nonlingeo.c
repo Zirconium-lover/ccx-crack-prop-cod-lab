@@ -1953,7 +1953,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
     damage_topology_deferred_mode=0,damage_topology_rebuild=1,
     damage_unsym_active=0,damage_unsym_elems=0,damage_unsym_report=0,
     damage_unsym_hole=0,damage_unsym_floor=0,damage_unsym_holerep=0,
-    damage_unsym_census=0,damage_unsym_tanfull=0,
+    damage_unsym_census=0,
     damage_snap_elem=0,damage_snap_bad=0,
     damage_diss_report=0,damage_diss_init=0,damage_diss_ctrl=0,
     damage_diss_have=0,damage_diss_ok=0,damage_diss_engaged=0,
@@ -3776,8 +3776,11 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
          the difference between "the flag ran and changed nothing" and "the
          flag was never read", which is exactly the ambiguity that made the
          first CCX_DAMAGE_TANGENT_FULL A/B uninformative (J-10). */
+      /* No flag is set here on purpose: resultsmech.f reads the environment
+         variable itself, so a C-side variable would look like a control and
+         be none.  It was one - damage_unsym_tanfull was written here and read
+         nowhere in src/. */
       if(getenv("CCX_DAMAGE_TANGENT_FULL")!=NULL){
-        damage_unsym_tanfull=1;
         printf("[DAMAGE TANGENT FULL] the consistent-tangent cut-off is "
                "taken on the SAME damage variable the stress uses instead "
                "of the stock D<0.999.  This CHANGES THE OPERATOR and "
@@ -3845,14 +3848,25 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
         if(damage_qam_floor<0.) damage_qam_floor=0.;
         if(damage_qam_floor>1.) damage_qam_floor=1.;
         if(damage_qam_floor>0.){
-          printf("[DAMAGE QAM FLOOR] DIAGNOSTIC: the reference force qam is held at or above %.3e of its running maximum, so the RELATIVE force criterion cannot collapse as the specimen unloads.  This CHANGES THE CONVERGENCE CRITERION and therefore the answer; going further with it is not by itself a success\n",damage_qam_floor);
+          printf("[DAMAGE QAM FLOOR] CHANGES THE ANSWER (not a diagnostic, despite the name): the reference force qam is held at or above %.3e of its running maximum, so the RELATIVE force criterion cannot collapse as the specimen unloads.  This CHANGES THE CONVERGENCE CRITERION and therefore the answer; going further with it is not by itself a success\n",damage_qam_floor);
         }
       }
       if(getenv("CCX_DAMAGE_AUTOSPC_NEG")!=NULL) damage_spc_neg=1;
       if((damage_de13_env=getenv("CCX_DAMAGE_AUTOSPC"))!=NULL){
         damage_spc_g=atof(damage_de13_env);
         if(damage_spc_g<0.) damage_spc_g=0.;
-        if(damage_spc_g>1.e-1) damage_spc_g=1.e-1;
+        /* The clamp is a safety rail and stays, but a SILENT clamp is a
+           behaviour nobody can see.  05-DEBT.md item 7: a deck whose worst
+           node reaches 1.0406e-01 masks nobody at any legal setting, and the
+           run gave no indication why - which is how the first fast deck came
+           to be used to "validate" a predicate it could never exercise. */
+        if(damage_spc_g>1.e-1){
+          printf("[DAMAGE AUTOSPC] *WARNING: the requested threshold %.3e is "
+                 "above the hard clamp; using 1.0e-01.  A deck whose worst "
+                 "diagonal ratio stays above that cannot exercise this "
+                 "predicate at ANY legal setting.%s",damage_spc_g,"\n");
+          damage_spc_g=1.e-1;
+        }
         if(damage_spc_g>0.){
           damage_stiff_probe=1;
           /* [DAMSTATE] prove the judgement before letting it decide
@@ -4460,7 +4474,8 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
                "set CCX_DAMAGE_REEQ_SCALE=PHYSICAL for NC2 trial\n");
       }
       if(damage_reeq_uam_floor>0.){
-        printf("[DAMAGE REEQ FLOOR] DIAGNOSTIC: the re-equilibration "
+        printf("[DAMAGE REEQ FLOOR] CHANGES THE ANSWER (not a diagnostic, "
+               "despite the name): the re-equilibration "
                "displacement reference is held at or above %.3e of its "
                "running maximum, so the RELATIVE correction criterion "
                "cannot collapse as the step is cut.  The perturbation of a "
