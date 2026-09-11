@@ -99,7 +99,13 @@ distance between the two wall classes can be read off a 24-second run:
 | deck, at its wall | node | `need_du` | grip | `need_du/grip` |
 |---|---|---|---|---|
 | `fast-wrapped`, increment 99 | 440 | 5.98e-04 | 0.1588 | **3.8e-03** |
-| what the class needs | — | — | — | **of order 1** |
+| **`s3rad` at the stall, node 1246** | — | 4.24e-02 | 0.2550 | **1.7e-01** |
+
+The bottom row is the class, measured rather than described: a candidate rung
+has to reach `need_du/grip` of order 1e-1, and `fast-wrapped` misses it by
+44x. A healthy node on the same `s3rad` iteration sits at 2.3e-05, so the
+target is not merely "large" — it is 7100x the healthy value on the same
+increment.
 
 So `fast-wrapped` misses the class by more than two decades, measured rather
 than argued. Any candidate rung can now be judged in seconds against the one

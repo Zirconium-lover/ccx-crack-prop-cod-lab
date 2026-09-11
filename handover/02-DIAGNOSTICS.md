@@ -62,7 +62,23 @@ Per node at the residual peak: `R`, `addiag`, `addiag0`, their `ratio`,
 | `need_du` of order the **grip displacement** | the node cannot be equilibrated by any physically meaningful displacement. This is the dimensionally sound criterion and it needs no tuned threshold |
 
 `need_du` against a length scale is the criterion to prefer over any
-stiffness ratio. Tuning a ratio until a particular node is included is the
+stiffness ratio. **It is now printed by `convstate.c` on every iteration, for
+both the peak of the judged residual and the excluded node**, and it has been
+measured where it matters — `s3rad` at the stall, increment 604:
+
+| node | role | `k` | `need_du/grip` |
+|---|---|---|---|
+| 8305 | peak of the JUDGED residual | 6.996e+03 | 2.34e-05 |
+| 1246 | the EXCLUDED node | 1.057e+00 | **1.66e-01** |
+
+Read it as: below ~1e-4 the node needs a microscopic motion it is simply not
+being given (look for a kink); of order 1e-1 it cannot be equilibrated by any
+displacement the specimen could undergo, and no step size will help.
+
+**Ask for the excluded node explicitly.** The probe first read only the peak
+of `ram[0]`, which is what remains AFTER `CCX_DAMAGE_AUTOSPC_FORCE` removes
+the node — so the one node the exclusion exists for was the one node never
+measured. It cost a full `s3rad` run to notice. Tuning a ratio until a particular node is included is the
 chain of thresholds this project exists to avoid — at one wall there were 76
 nodes below 1e-3, 166 below 1e-2 and 381 below 1e-1, and picking among them
 proves nothing.

@@ -153,6 +153,40 @@ mechanism is not broken everywhere — it has stopped discriminating at this
 state. By the criterion the project wrote for itself, `CCX_DAMAGE_AUTOSPC_FORCE`
 must be revisited before any further weight is put on it.
 
+**`need_du/grip` separates the class, measured on the target deck.** The
+quantity `02-DIAGNOSTICS.md` §2 proposed as the threshold-free criterion has
+now been taken at the stall, on the node the second wall is about. At
+increment 604, `theta = 0.255032`, both readings from the same iteration:
+
+| node | role | `|R|` | `k` | `need_du/grip` |
+|---|---|---|---|---|
+| 8305 | peak of the JUDGED residual | 4.168e-02 | 6.996e+03 | **2.34e-05** |
+| 1246 | the EXCLUDED node | 4.484e-02 | **1.057e+00** | **1.66e-01** |
+
+Node 1246 needs a displacement of **17% of the grip travel** to shed its
+residual, and will never get one. The healthy node on the same iteration needs
+2.3e-05. That is a separation of **7100x**, on stiffnesses that differ by
+6600x — and it needs no tuned threshold, which is the whole point: the chain
+of stiffness ratios `02-DIAGNOSTICS.md` §2 warns about (76 nodes below 1e-3,
+166 below 1e-2, 381 below 1e-1) is replaced by one dimensionless number.
+
+It is stable, not a spike: across the iterations of that increment it rises
+0.156 → 0.159 → 0.162 → 0.166 while `k` falls 1.159 → 1.057. The node is
+degrading and the number tracks it.
+
+The scale, end to end:
+
+| state | `need_du/grip` |
+|---|---|
+| healthy `s3rad`, early increments | 1e-9 … 1e-5 |
+| healthy node at the stall (8305) | 2.3e-05 |
+| `fast-wrapped` at its wall (440) | 3.8e-03 |
+| **node 1246 at the stall** | **1.7e-01** |
+
+This is what `convstate.c` was built to wait for. It is now measured, and the
+judgement can be given something to decide with — but that step has not been
+taken here, and the obligations in `06-TARGET.md` still apply to it.
+
 **The grips can be read off the deck.** `loadpath.c` derives them from the
 `*BOUNDARY` cards — the direction carrying the largest prescribed magnitude,
 driven nodes against nodes held at zero in that same direction. On the target

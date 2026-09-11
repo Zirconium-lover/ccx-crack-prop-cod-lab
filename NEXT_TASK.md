@@ -137,8 +137,24 @@ tolerance. By `02-DIAGNOSTICS.md` §2 that is the signature of a **kink**, not
 of a stiffness loss, which is a different diagnosis from the one the second
 wall is on record for. One measurement, not yet corroborated.
 
-**So the measurement that matters is still outstanding:** `need_du/grip` at
-the stall, on node 1246. The prediction is that it is of order
+**TAKEN, and it separates the class.** Re-run with the fixed probe, same
+configuration, increment 604 / `theta = 0.255032` reproduced exactly:
+
+```
+node 1246 (excluded)      |R|=4.4835e-02  k=1.0574e+00  need_du/grip = 1.66e-01
+node 8305 (judged peak)   |R|=4.1680e-02  k=6.9958e+03  need_du/grip = 2.34e-05
+```
+
+7100x apart, on stiffnesses 6600x apart, stable across the iterations of that
+increment (0.156 → 0.166 while `k` falls 1.159 → 1.057). No tuned threshold.
+
+**So `convstate.c` can now be given something to decide with.** What it must
+NOT do is become a seventh way of surviving a state the model should not be
+in — the obligations in `06-TARGET.md` apply: name the failure it addresses
+and the gate case that would go red without it. Note also that the peak of the
+JUDGED residual at that stall sits on a HEALTHY node (2.3e-05) at 22.7x
+tolerance, which by §2 is a kink signature — so the stall may have two causes
+and the ownerless judgement is only one of them. The prediction is that it is of order
 one, and that is what would make the criterion dimensionally sound and free of
 any tuned threshold. It has NOT been taken — the `s3rad` runs in this session
 used a binary built before `convstate.c` existed, so their logs carry no
