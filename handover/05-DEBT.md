@@ -181,6 +181,24 @@ after    97  2   11 iter  theta=0.158762     <- the same, immediately
 Same accepted increments (98), byte-identical `m.damage`, two attempts fewer.
 The gate pins it as `attempts`, so reinstating the dead levels goes red.
 
+**Confirmed on the target deck**, same configuration, 4 threads, the only
+difference being the fix:
+
+| | before | after |
+|---|---|---|
+| stall | inc 604, `theta=0.255032` | **the same, to the last digit** |
+| accepted increments | 604 | 604 |
+| the (increment, theta) sequence | — | **identical**, 619 states |
+| `m.damage` | — | **byte-identical** |
+| attempts | 1253 | **1245** |
+| RESCUE walls | 16 | **8** |
+| level skips | 0 | **4** |
+
+Four skips removed eight attempts, two per skip. State the size honestly: that
+is 0.6% of attempts and the stall did not move. The gain is not wall-clock —
+it is that half the walls stopped spending their level budget recomputing an
+identical solve before reaching the mechanism that can act.
+
 ## 4. A 14000-line function
 
 `nonlingeo()` carries the solve, the convergence judgement, the erosion and
