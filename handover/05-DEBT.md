@@ -95,10 +95,27 @@ Doing it properly would let the halves become free bodies and the matrix
 become singular, so the model would find out on its own rather than being
 told.
 
-## 2. 139 switches, 122 that no test sets
+## 2. 139 switches, 121 that no test sets
 
-Generated, not estimated (`docs/SWITCHES.md`). 63 have no prose anywhere but
-the line that reads them. The 122 include every rescue, corridor,
+Generated, not estimated (`docs/SWITCHES.md`). Re-derived after the generator
+bug in item 7 was fixed:
+
+| | |
+|---|---|
+| switches the binary reads | 139 |
+| exercised by the gate | 18 |
+| **set by no test at all** | **121** |
+| explained nowhere — no banner, no prose | **59** (was reported as 63) |
+
+Two corrections to how this is counted, both of which shrink the real debt:
+
+- about **11** are stock CalculiX, not this branch's doing (`CCX_NPROC_*`,
+  `CCX_OOC_MEM`, `CCX_PARDISO_CGS`, `CCX_LOG_ALLOC`);
+- **25 of the orphans are sub-tunables of three parents** and cannot be
+  reached unless the parent is armed first: `CCX_DAMAGE_CORR_*` (8) behind
+  `RESCUE_CORRIDOR`, `CCX_DAMAGE_TR_*` (8) behind `TR_DOGLEG`, and
+  `CCX_DAMAGE_CT_*` (9) behind `CONTINUATION`. Retiring a parent retires its
+  sub-tunables for free. The 122 include every rescue, corridor,
 backtracking and diagnostic knob — the combinatorial space where nobody can
 say what any combination does.
 
