@@ -118,6 +118,36 @@ Evidence they do not all discriminate: at one wall, **three consecutive
 attempts produced bit-identical residual sequences** — two rescue levels ran
 and did nothing.
 
+**That was not history — it was live on the configuration the target runner
+uses, and it is now fixed.** The ladder already had a skip for it, but the
+skip was gated on `damage_reg_nlam>0`, i.e. it only fired when the
+REGULARISATION ladder was armed, and it jumped to level 2.
+`test/s3rad/run_s3rad.sh` arms RESCUE2 + TR_DOGLEG and **not** RESCUE3, so
+`damage_reg_nlam` is 0, the skip never fired, and the level it would have
+jumped to could not act either. Measured on `s3rad`, increment 602:
+
+| attempt | level | what it did |
+|---|---|---|
+| wall 1 | 1 | 0 `[DAMAGE BT]`, 0 `[DAMAGE TR]` — **nothing** |
+| wall 2 | 2 | 0 `[DAMAGE BT]`, 0 `[DAMAGE TR]` — **nothing** |
+| wall 3 | 3 | 12 `[DAMAGE TR]` — the dogleg **converged** |
+
+The whole run printed `skipping straight` exactly **zero** times.
+
+`src/rescuelevel.c` now owns "which level can act first", with a self test,
+because the previous version was a condition nobody could check. Measured on
+`fast-wrapped`, which has the same defect at increment 97:
+
+```
+before   97  2U   6 iter  theta=0.158758     <- did nothing
+         97  3U   6 iter  theta=0.158758     <- did nothing
+         97  4   11 iter  theta=0.158762     <- converged
+after    97  2   11 iter  theta=0.158762     <- the same, immediately
+```
+
+Same accepted increments (98), byte-identical `m.damage`, two attempts fewer.
+The gate pins it as `attempts`, so reinstating the dead levels goes red.
+
 ## 4. A 14000-line function
 
 `nonlingeo()` carries the solve, the convergence judgement, the erosion and

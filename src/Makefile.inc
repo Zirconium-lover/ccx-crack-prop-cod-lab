@@ -1116,6 +1116,7 @@ damstate.c \
 loadpath.c \
 convstate.c \
 stallstate.c \
+rescuelevel.c \
 damswitch.c \
 pardiso_cp.c \
 pastix.c \

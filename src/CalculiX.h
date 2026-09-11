@@ -5043,6 +5043,13 @@ ITG  stallstate_judge(stallstate *s,double dtheta);
 ITG  stallstate_stalled(const stallstate *s);
 ITG  stallstate_selftest(void);
 
+/* ---- THE judgement of which rescue level can act (rescuelevel.c) -----
+   Levels 1 and 2 need a same-load solve; a wall with idamagereeq==0 makes
+   them recompute an identical attempt.  Measured on s3rad inc=602: two of
+   three attempts did nothing at all.  */
+ITG  rescuelevel_first_useful(ITG reeq,ITG nlam,ITG dl,ITG maxlevel);
+ITG  rescuelevel_selftest(void);
+
 /* ---- the backtracking ladder of the damage line search (lsladder.c) --
    Extracted from the Newton loop because it was wrong and the way it was
    wrong is worth a regression test.  See the block comment there. */

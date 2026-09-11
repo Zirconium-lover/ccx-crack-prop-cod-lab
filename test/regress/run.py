@@ -55,6 +55,16 @@ def census(log):
         if worst is None or v<worst: worst=v
     return mx,worst
 
+def attempts(p):
+    """Solver attempts recorded in the status file, accepted and rejected.
+
+    Pins the rescue ladder's cost.  A level that cannot act on a wall still
+    burns an attempt and writes a line here, so a regression that reinstates
+    a dead level shows up as MORE attempts at the same accepted increments -
+    which is exactly what it is."""
+    try: return sum(1 for l in open(p) if l.strip() and not l.lstrip().startswith('#'))
+    except OSError: return None
+
 def severance(log):
     """The run's OWN verdict on whether it was still a specimen.
 
@@ -146,6 +156,8 @@ def one(case,outroot,exe,required,lines):
         got['severed_inc'],got['severed_theta']=severance(log)
     if 'shut_facets' in exp:
         got['shut_facets']=shut_facets(log)
+    if 'attempts' in exp and sta is not None:
+        got['attempts']=attempts(sta)
     if 'check_close' in exp:
         r=sh('python3 %s/test/pathfollow/check_close.py %s --zeta %s'
              %(ROOT,rundir,case.get('zeta','0')),base_env([]))

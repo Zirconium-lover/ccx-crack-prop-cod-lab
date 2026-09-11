@@ -137,6 +137,7 @@ damstate damage_dstate={0,NULL,NULL,NULL,NULL,0,0.,0};
 /* [STALLSTATE] the run's own opinion of whether it is still progressing */
 static stallstate damage_stall;
 static ITG damage_stall_ok=0;
+static ITG damage_rl_ok=0;
 
 /* [LOADPATH] the single owner of the judgement one level up: whether a
    load path still links the grips at all, i.e. whether what is being
@@ -2976,6 +2977,12 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
            self test, like every other judgement here. */
         stallstate_init(&damage_stall);
         damage_stall_ok=(stallstate_selftest()==0);
+        damage_rl_ok=(rescuelevel_selftest()==0);
+        if(!damage_rl_ok){
+          printf("[RESCUELEVEL] *ERROR: self test failed; the rescue ladder "
+                 "will run every level in order rather than skipping by a "
+                 "rule that is not the one that was tested.%s","\n");
+        }
         if(!damage_stall_ok){
           printf("[STALLSTATE] *ERROR: self test failed; the diagnostics will "
                  "NOT arm themselves and CCX_DAMAGE_WALL_THETA stays the only "
@@ -12882,12 +12889,19 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
              recompute the identical attempt.  Measured: s3rad inc=569
              carries four [DAMAGE RESCUE] lines and not one [DAMAGE BT],
              and both retries there failed identically. */
-          if((idamagereeq==0)&&(damage_reg_nlam>0)&&
-             (damage_rescue_used<2)){
-            printf("[DAMAGE RESCUE] this wall has idamagereeq=0: no "
-                   "same-load solve, so levels 1 and 2 cannot act on it; "
-                   "skipping straight to the regularized level%s","\n");
-            damage_rescue_used=2;
+          if(damage_rl_ok){
+            ITG rlfirst=rescuelevel_first_useful(idamagereeq,damage_reg_nlam,
+                                                 damage_dl_mode,
+                                                 damage_rescue_maxlevel);
+            if(rlfirst>damage_rescue_used){
+              printf("[DAMAGE RESCUE] this wall has idamagereeq=%" ITGFORMAT
+                     ": levels %" ITGFORMAT "-%" ITGFORMAT " cannot act on "
+                     "it (no same-load solve), so they would recompute the "
+                     "identical attempt; skipping straight to level %"
+                     ITGFORMAT "%s",
+                     idamagereeq,damage_rescue_used,rlfirst-1,rlfirst,"\n");
+              damage_rescue_used=rlfirst;
+            }
           }
           /* [DAMAGE CT] level 4: Rescue2 levels 1-2 and the dogleg have
              all failed on this wall.  The standard cutback rollback has

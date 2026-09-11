@@ -16,6 +16,7 @@
     "severed_inc/severed_theta pin the run's own [LOADPATH] verdict; severed_inc 0 means the specimen never lost its load path.",
     "shut_facets pins the state-dependent judgement: facets that are fully failed AND in compression, which still conduct.",
     "Connectivity is DIRECTIONAL: a dead facet pressed shut carries compression, not tension, so it counts as a load path only while the grips are closing.  close-* is the only deck here under compression.",
+    "attempts pins the rescue ladder's cost: a level that cannot act on a wall still burns an attempt, so reinstating a dead level shows up as more attempts at the same accepted increments.",
     "required_lines: every run's log must contain these, so a report that silently stopped being emitted is caught."
   ],
   "cases": [
@@ -67,7 +68,8 @@
         "masked_max": 1,
         "worst_ratio": 0.00044641,
         "severed_inc": 96,
-        "severed_theta": "0.1587578"
+        "severed_theta": "0.1587578",
+        "attempts": 146
       }
     },
     {
@@ -102,7 +104,8 @@
         "theta": "0.158766E+00",
         "deletions": 64,
         "severed_inc": 96,
-        "severed_theta": "0.1587578"
+        "severed_theta": "0.1587578",
+        "attempts": 146
       }
     },
     {
@@ -198,7 +201,8 @@
     "LSLADDER",
     "LOADPATH",
     "CONVSTATE",
-    "STALLSTATE"
+    "STALLSTATE",
+    "RESCUELEVEL"
   ],
   "required_lines": [
     "[SWITCHES] this binary reads",

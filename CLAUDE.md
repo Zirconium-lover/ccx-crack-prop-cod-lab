@@ -52,8 +52,8 @@ switch registry with `tools/mkswitches.py` if you add or remove a `getenv`;
 the gate's preflight fails if it is stale.
 
 Preserve, unless you have measured a reason not to and said so: feature-off
-behaviour, the six self tests (`DAMAGE TR`, `DAMSTATE`, `LSLADDER`,
-`LOADPATH`, `CONVSTATE`, `STALLSTATE`), the analytical Mode-I and mixed-mode benchmarks, the
+behaviour, the seven self tests (`DAMAGE TR`, `DAMSTATE`, `LSLADDER`,
+`LOADPATH`, `CONVSTATE`, `STALLSTATE`, `RESCUELEVEL`), the analytical Mode-I and mixed-mode benchmarks, the
 constitutive law checks, and the old-wall line-search A/B.
 
 ## Delivery
