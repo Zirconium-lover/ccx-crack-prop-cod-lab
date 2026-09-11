@@ -279,8 +279,20 @@ second wall at `theta = 0.255023` against the recorded `0.2555742` (0.2%
 apart, which is what a different thread count buys), and at the last census
 before it — increment 550, `theta = 0.24175` — the specimen is **still one
 piece**: `connected=1`, 1711 of 5318 facets failed, 39148 elements live. The
-grip reaction there is 66.4 against a peak of 3112.8 at `theta=0.1575`, i.e.
-**2.1% of peak**.
+grip reaction is now taken by the census on every accepted increment rather
+than from `.dat`:
+
+| increment | theta | reaction | % of peak |
+|---|---|---|---|
+| 500 | 0.23110 | 493.1 | 15.8% |
+| 550 | 0.24175 | 219.6 | **7.05%** |
+| 600 | 0.25503 | 66.4 | **2.13%** |
+
+(The 66.4 was attached to increment 550 above; it belongs to 600. The
+conclusion is unchanged and better supported: the specimen carries several
+per cent of peak right up to the stall. The census peak, 3113, agrees with
+the `.dat` peak of 3112.81 — unlike `fast-plain`, this deck prints often
+enough for the `.dat` figure to be right.)
 
 So the second wall is a real convergence failure of a real specimen, and
 deserved the work that went into it. The third wall is not, and did not. Only

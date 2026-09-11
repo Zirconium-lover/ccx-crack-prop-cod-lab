@@ -12436,6 +12436,23 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
 	           damage_spc_fcount,damage_spc_fmax,damage_spc_fnode,
 	           ram[0],ctrl[18]*qam[0],
 	           (qam[0]>0.)?damage_spc_fmax/qam[0]:0.,"\n");
+	    /* [CONVSTATE] the EXCLUDED node, read as a length.
+
+	       Without this the probe below measures the peak of ram[0], and
+	       ram[0] is what is left AFTER this exclusion - so the one node
+	       the exclusion exists for was the one node never measured.  Cost
+	       one s3rad run to notice: at the stall it reported node 8305 at
+	       need_du/grip = 2.3e-05 while node 1246, the subject, was not in
+	       the norm at all. */
+	    if((damage_dstate.nk>0)&&(damage_spc_fnode>=1)&&
+	       (damage_spc_fnode<=damage_dstate.nk)){
+	      convstate_report(iinc,damage_spc_fnode,damage_spc_fmax,
+	                       damage_dstate.diag[damage_spc_fnode-1],
+	                       convstate_griplength(vold,mt,damage_lp.nodesb,
+	                                            damage_lp.nb,
+	                                            damage_lp.idir),
+	                       ctrl[18]*qam[0]);
+	    }
 	  }
 	  if((ITG)((double)nactdofinv[(ITG)ram[2]]/mt)+1==0){
 	    printf(" largest residual force= %f\n",

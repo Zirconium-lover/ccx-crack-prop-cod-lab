@@ -116,8 +116,29 @@ Measured so far:
 | `fast-wrapped`, increment 99 | 440 | **3.8e-03** |
 | the class this is for | — | **of order 1** |
 
-**The next measurement, and it is the one that matters:** `need_du/grip` at
-the second `s3rad` wall, on node 1246. The prediction is that it is of order
+**Measured, and it revealed a defect in the probe rather than an answer.**
+One run to the stall (4 threads, `AUTOSPC_FORCE=1`, increment 604,
+`theta=0.255032` — reproduced exactly) reported:
+
+```
+[CONVSTATE] inc=604 peak residual node 8305 |R|=4.168e-02 k=6.996e+03
+            need_du=5.96e-06 grip=0.2550 need_du/grip=2.34e-05
+excluded:   largest excluded residual 4.4835e-02 at node 1246
+```
+
+The probe read the peak of `ram[0]` — and `ram[0]` is what remains AFTER
+`AUTOSPC_FORCE` excludes node 1246. **So the one node the exclusion exists for
+was the one node never measured.** Fixed: the exclusion report now also reports
+the excluded node as a length. The measurement itself still has to be re-taken.
+
+Worth keeping from that run anyway: the peak of the JUDGED residual sits on a
+**healthy** node — `k = 7.0e+03`, `need_du/grip = 2.3e-05` — at 22.7x
+tolerance. By `02-DIAGNOSTICS.md` §2 that is the signature of a **kink**, not
+of a stiffness loss, which is a different diagnosis from the one the second
+wall is on record for. One measurement, not yet corroborated.
+
+**So the measurement that matters is still outstanding:** `need_du/grip` at
+the stall, on node 1246. The prediction is that it is of order
 one, and that is what would make the criterion dimensionally sound and free of
 any tuned threshold. It has NOT been taken — the `s3rad` runs in this session
 used a binary built before `convstate.c` existed, so their logs carry no
