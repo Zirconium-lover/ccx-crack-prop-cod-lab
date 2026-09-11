@@ -123,13 +123,29 @@ A switch that no test sets and no prose explains **has no defenders**.
 Retiring one is now cheap to justify: make its behaviour the default, or
 delete it. Prefer either to leaving it.
 
-## 3. Six overlapping globalization mechanisms
+## 3. Globalization mechanisms — eight, now seven
 
-The adaptive damage line-search ladder, transactional backtracking, Rescue
-level 1, Rescue level 2 with an event step, a dogleg trust region as level 3,
-and dissipation/crack-control path following. Each was added for one wall.
-None was removed when a later diagnosis showed the earlier one had been
-incomplete.
+The list in the original entry undercounted. Besides the adaptive damage
+line-search ladder, transactional backtracking, Rescue 1, Rescue 2 with an
+event step, the dogleg as level 3 and dissipation/crack-control path
+following, there are **two more** sharing the same `damage_rescue_used`
+counter: a regularised-diagonal level 3 (`CCX_DAMAGE_REEQ_RESCUE3` /
+`RESCUE_CORRIDOR`) and a coupled continuation level 4
+(`CCX_DAMAGE_CONTINUATION`). Neither is set by any test.
+
+**Always-on transactional backtracking is now RETIRED**, and it is the
+cheapest possible case to justify: it was refuted by its own source comment —
+measured to shorten solver survival on three placements of four and to destroy
+the bandrad severance the control reaches (J-17) — and the rescue arming block
+switched it off whenever rescue was armed, which every runner here does. It
+was dead code behind three cross-switch vetoes. Its three tunables
+(`_BT_GROWTH`, `_BT_WINDOW`, `_BT_FLOOR`) were parsed inside its own block and
+went with it; their defaults are what the EMERGENCY rescue backtracking has
+always run on, so nothing it was doing changed. All nine gate trajectories
+byte-identical, 139 switches → **135**.
+
+Each of the remaining seven was added for one wall. None was removed when a
+later diagnosis showed the earlier one had been incomplete.
 
 Evidence they do not all discriminate: at one wall, **three consecutive
 attempts produced bit-identical residual sequences** — two rescue levels ran

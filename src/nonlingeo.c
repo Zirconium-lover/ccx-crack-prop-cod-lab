@@ -1886,7 +1886,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
     *damage_tent_elem=NULL,*damage_tent_mat=NULL,*damage_tent_ip=NULL,
     *damage_de13_trigger_ip=NULL,*damage_ract=NULL,
     damage_ray_probe=0,damage_ray_shots=0,damage_ray_max=8,
-    *damage_ray_cat=NULL,damage_bt_mode=0,damage_bt_ntrial=0,
+    *damage_ray_cat=NULL,damage_bt_ntrial=0,
     damage_rescue_mode=0,damage_rescue_bt_on=0,damage_rescue_used=0,
     damage_rescue_nfired=0,damage_rescue_nok=0,damage_rescue_maxlevel=1,
     damage_evt_on=0,damage_evt_nstep=0,*damage_evt_sgn=NULL,
@@ -3156,12 +3156,6 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
          Value = max number of rays to walk (default 8).  Unset = off,
          nothing allocated.  Changes no bit of the answer: b is saved and
          restored exactly, and the last evaluation is the alpha=1 state. */
-      /* CCX_DAMAGE_REEQ_BACKTRACK - SOLVER CHANGE, not a diagnostic.
-         Damps the Newton step during same-load re-equilibration, restoring
-         the committed baseline before every probe and restoring the full
-         step when nothing is acceptable.  THIS CHANGES THE ANSWER: a run
-         that goes further with it is not thereby a success, and adopting it
-         needs the full verify + ladder gate.  Default off = bit-identical. */
       /* CCX_DAMAGE_ABA=<alpha> - PURE DIAGNOSTIC.  Proves, or refutes, that a
          trial evaluation is a pure function of the step length.  The earlier
          A-B-A compared ONE scalar (|R|inf); one scalar agreeing proves
@@ -3196,49 +3190,19 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
         fflush(stdout);
       }
 
-      if(getenv("CCX_DAMAGE_REEQ_BACKTRACK")!=NULL){
-        damage_bt_mode=1;
-        /* Three tunables, each aimed at a MEASURED failure of the
-           first version (J-15 -> bandrad regressed 25%).
-           _GROWTH : engage only when the full step makes the residual
-                     worse by more than this factor.  Damping a step
-                     that merely fails Armijo is what made the method
-                     more aggressive than BK3 (which needs 1.10) and
-                     is what stalled bandrad.  1.0 = old behaviour.
-           _WINDOW : non-monotone reference (Grippo-Lampariello-
-                     Lucidi).  Acceptance compares against the MAX of
-                     the last WINDOW residuals, not the current one,
-                     so Newton may worsen the residual briefly and
-                     cross the kink - which is exactly what the
-                     undamped control does.  1 = monotone = old.
-           _FLOOR  : refuse to accept a step shorter than this.  The
-                     measured death mode was a chain of accepts at
-                     alpha=0.031 and 0.016 buying 1-3% each while the
-                     iteration budget drained.  0.015625 = old. */
-        if((damage_de13_env=getenv("CCX_DAMAGE_BT_GROWTH"))!=NULL){
-          damage_bt_growth=atof(damage_de13_env);
-          if(damage_bt_growth<1.) damage_bt_growth=1.;
-        }
-        if((damage_de13_env=getenv("CCX_DAMAGE_BT_WINDOW"))!=NULL){
-          damage_bt_window=atoi(damage_de13_env);
-          if(damage_bt_window<1) damage_bt_window=1;
-          if(damage_bt_window>8) damage_bt_window=8;
-        }
-        if((damage_de13_env=getenv("CCX_DAMAGE_BT_FLOOR"))!=NULL){
-          damage_bt_floor=atof(damage_de13_env);
-          if(damage_bt_floor<0.015625) damage_bt_floor=0.015625;
-          if(damage_bt_floor>1.) damage_bt_floor=1.;
-        }
-        printf("[DAMAGE BT] transactional backtracking ENABLED in "
-               "idamagereeq: alpha 1, 1/2 ... 1/64, Armijo on |R|inf with "
-               "c1=1e-4, committed baseline restored before every probe, "
-               "full step restored and the increment handed to the standard "
-               "cutback if no probe is acceptable.  THIS CHANGES THE "
-               "ANSWER.  growth=%.3f window=%" ITGFORMAT
-               " floor=%.6f%s",damage_bt_growth,damage_bt_window,
-               damage_bt_floor,"\n");
-        fflush(stdout);
-      }
+      /* CCX_DAMAGE_REEQ_BACKTRACK and its three tunables (_BT_GROWTH,
+         _BT_WINDOW, _BT_FLOOR) are RETIRED.  Always-on transactional
+         backtracking was refuted by its own source comment: measured to
+         shorten solver survival on three placements of four, and to destroy
+         the bandrad severance the control reaches (J-17).  It could never run
+         beside rescue - the rescue arming block switched it off - so on the
+         configuration every runner here uses it was dead code guarded by
+         three cross-switch vetoes.
+
+         The tunables kept their defaults, which the comment recorded as "old
+         behaviour" (growth 1.0, window 1, floor 0.015625), and those are the
+         values the EMERGENCY rescue backtracking below has always run on.
+         So retiring the parent changes nothing it was doing. */
 
       /* ---- CCX_DAMAGE_REEQ_RESCUE ------------------------------------
          Emergency-only backtracking.  Always-on BT is EXPERIMENTAL and was
@@ -3331,12 +3295,6 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
                "nearly every increment is crawling, not passing a wall: "
                "measured, 92 regularized rescues bought 2.2e-4 of step "
                "time on s3rad.%s",damage_rec_window,damage_rec_maxunrec,"\n");
-        if(damage_bt_mode==1){
-          printf("[DAMAGE RESCUE] CCX_DAMAGE_REEQ_BACKTRACK (always-on, "
-                 "experimental) must not run together with rescue; it is "
-                 "switched OFF for this run.%s","\n");
-          damage_bt_mode=0;
-        }
         printf("[DAMAGE RESCUE] emergency rescue backtracking ENABLED.  The "
                "trajectory, the stock Newton and every stock cutback are "
                "unchanged.  Only where the next stock cutback would put "
@@ -3495,12 +3453,6 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
                  "the same rescue levels.  Stopping.%s","\n");
           fflush(stdout);FORTRAN(stop,());
         }
-        if(damage_bt_mode==1){
-          printf("*ERROR: CCX_DAMAGE_TR_DOGLEG must not run together with "
-                 "always-on CCX_DAMAGE_REEQ_BACKTRACK (rejected, J-17).  "
-                 "Stopping.%s","\n");
-          fflush(stdout);FORTRAN(stop,());
-        }
         damage_dl_mode=1;
         damage_rescue_maxlevel=3;
         if((damage_de13_env=getenv("CCX_DAMAGE_TR_MAXTRIAL"))!=NULL)
@@ -3581,7 +3533,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
                  "\n");
           fflush(stdout);FORTRAN(stop,());
         }
-        if((damage_corr_mode==1)||(damage_reg_nlam>0)||(damage_bt_mode==1)||
+        if((damage_corr_mode==1)||(damage_reg_nlam>0)||
            (damage_arc==1)||(damage_diss_ctrl>=1)||(damage_path_on>0)){
           printf("*ERROR: CCX_DAMAGE_CONTINUATION conflicts with "
                  "CCX_DAMAGE_ARCLENGTH, CCX_DISSIPATION_CONTROL, "
@@ -11974,7 +11926,7 @@ void nonlingeo(double **cop,ITG *nk,ITG **konp,ITG **ipkonp,char **lakonp,
          Acceptance is Armijo on the mechanical infinity norm:
              |R(alpha)|inf <= (1 - c1*alpha) * |R(0)|inf ,  c1 = 1e-4.
          Default off; unset the flag and not one array is allocated. */
-      if(((damage_bt_mode==1)||(damage_rescue_bt_on==1))&&
+      if((damage_rescue_bt_on==1)&&
          (idamagereeq==1)&&(ncont==0)&&
          (*nmethod!=4)&&(*nmethod!=5)&&(*ithermal<2)&&(*idrct==0)){
         static const double btA[]={0.,1.,0.5,0.25,0.125,0.0625,0.03125,
